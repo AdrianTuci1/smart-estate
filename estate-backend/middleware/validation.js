@@ -48,10 +48,19 @@ const schemas = {
   // Lead schemas
   lead: Joi.object({
     name: Joi.string().min(2).max(100).required(),
-    phone: Joi.string().pattern(/^[+]?[\d\s\-\(\)]+$/).required(),
+    phone: Joi.string().min(5).max(20).optional().allow(''),
     email: Joi.string().email().optional().allow(''),
     notes: Joi.string().max(1000).optional().allow(''),
-    status: Joi.string().valid('active', 'contacted', 'converted', 'lost').default('active'),
+    status: Joi.string().valid('New', 'Attempted', 'Connected', 'Progress', 'Potential', 'Customer').default('New'),
+    interest: Joi.string().max(200).optional().allow(''),
+    property: Joi.string().max(200).optional().allow(''),
+    propertyId: Joi.string().optional().allow(''),
+    propertyAddress: Joi.string().max(300).optional().allow(''),
+    apartment: Joi.string().max(100).optional().allow(''),
+    apartmentId: Joi.string().optional().allow(''),
+    apartmentRooms: Joi.number().integer().min(1).max(10).optional().allow(null),
+    apartmentArea: Joi.number().positive().optional().allow(null),
+    apartmentPrice: Joi.number().positive().optional().allow(null),
     propertiesOfInterest: Joi.array().items(Joi.string()).default([])
   }),
 

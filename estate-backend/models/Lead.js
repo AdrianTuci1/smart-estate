@@ -10,7 +10,16 @@ class Lead {
     this.companyId = data.companyId;
     this.propertiesOfInterest = data.propertiesOfInterest || []; // Array of property IDs
     this.notes = data.notes || '';
-    this.status = data.status || 'active'; // active, contacted, converted, lost
+    this.status = data.status || 'New'; // New, Attempted, Connected, Progress, Potential, Customer
+    this.interest = data.interest || '';
+    this.property = data.property || '';
+    this.propertyId = data.propertyId || '';
+    this.propertyAddress = data.propertyAddress || '';
+    this.apartment = data.apartment || '';
+    this.apartmentId = data.apartmentId || '';
+    this.apartmentRooms = data.apartmentRooms || null;
+    this.apartmentArea = data.apartmentArea || null;
+    this.apartmentPrice = data.apartmentPrice || null;
     this.createdAt = data.createdAt || new Date().toISOString();
     this.updatedAt = data.updatedAt || new Date().toISOString();
   }

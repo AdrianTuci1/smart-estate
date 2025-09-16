@@ -13,6 +13,13 @@ const mockLeads = [
     company: 'ABC Imobiliare',
     interest: '2 camere',
     property: 'Complex Rezidențial Aurora',
+    propertyId: 'prop-1',
+    propertyAddress: 'Strada Aurora, nr. 15, București',
+    apartment: 'Apartament A12',
+    apartmentId: 'apt-1',
+    apartmentRooms: 2,
+    apartmentArea: 65,
+    apartmentPrice: 85000,
     status: 'Connected',
     lastContact: '2024-01-15',
     notes: 'Client foarte interesat de apartamentul cu 2 camere. Urmează vizionarea.'
@@ -25,6 +32,13 @@ const mockLeads = [
     company: 'ABC Imobiliare',
     interest: '3 camere',
     property: 'Complex Rezidențial Aurora',
+    propertyId: 'prop-1',
+    propertyAddress: 'Strada Aurora, nr. 15, București',
+    apartment: 'Apartament B5',
+    apartmentId: 'apt-2',
+    apartmentRooms: 3,
+    apartmentArea: 85,
+    apartmentPrice: 120000,
     status: 'Progress',
     lastContact: '2024-01-14',
     notes: 'Așteaptă aprobarea creditului bancar.'
@@ -37,6 +51,13 @@ const mockLeads = [
     company: 'XYZ Real Estate',
     interest: '1 cameră',
     property: 'Tower Residence',
+    propertyId: 'prop-2',
+    propertyAddress: 'Bd. Unirii, nr. 25, București',
+    apartment: 'Apartament C301',
+    apartmentId: 'apt-3',
+    apartmentRooms: 1,
+    apartmentArea: 45,
+    apartmentPrice: 55000,
     status: 'New',
     lastContact: '2024-01-13',
     notes: 'Primul contact. Interesată de apartamente mici.'
@@ -49,6 +70,13 @@ const mockLeads = [
     company: 'ABC Imobiliare',
     interest: '4 camere',
     property: 'Garden View Apartments',
+    propertyId: 'prop-3',
+    propertyAddress: 'Strada Grădini, nr. 8, București',
+    apartment: 'Apartament D10',
+    apartmentId: 'apt-4',
+    apartmentRooms: 4,
+    apartmentArea: 120,
+    apartmentPrice: 180000,
     status: 'Potential',
     lastContact: '2024-01-12',
     notes: 'Familie cu copii, caută apartament spațios.'
@@ -61,6 +89,13 @@ const mockLeads = [
     company: 'XYZ Real Estate',
     interest: '2 camere',
     property: 'Garden View Apartments',
+    propertyId: 'prop-3',
+    propertyAddress: 'Strada Grădini, nr. 8, București',
+    apartment: 'Apartament E7',
+    apartmentId: 'apt-5',
+    apartmentRooms: 2,
+    apartmentArea: 70,
+    apartmentPrice: 95000,
     status: 'Customer',
     lastContact: '2024-01-11',
     notes: 'Client fidel, a cumpărat deja un apartament.'
@@ -75,6 +110,17 @@ const LeadsTable = ({ onLeadSelect, searchTerm = '' }) => {
   const [leads, setLeads] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Helper function to format price
+  const formatPrice = (price) => {
+    if (!price) return '';
+    return new Intl.NumberFormat('ro-RO', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price);
+  };
 
   // Load leads from API
   useEffect(() => {
@@ -108,7 +154,9 @@ const LeadsTable = ({ onLeadSelect, searchTerm = '' }) => {
       lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.phone?.includes(searchTerm) ||
       lead.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.property?.toLowerCase().includes(searchTerm.toLowerCase())
+      lead.property?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.apartment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.propertyAddress?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     filtered.sort((a, b) => {
@@ -249,6 +297,15 @@ const LeadsTable = ({ onLeadSelect, searchTerm = '' }) => {
                     {getSortIcon('property')}
                   </div>
                 </th>
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('apartment')}
+                >
+                  <div className="flex items-center space-x-1">
+                    <span>Apartament</span>
+                    {getSortIcon('apartment')}
+                  </div>
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Acțiuni
                 </th>
@@ -304,8 +361,37 @@ const LeadsTable = ({ onLeadSelect, searchTerm = '' }) => {
                       {lead.interest}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {lead.property}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {lead.property ? (
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {lead.property}
+                        </div>
+                        {lead.propertyAddress && (
+                          <div className="text-xs text-gray-500 truncate max-w-xs">
+                            {lead.propertyAddress}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {lead.apartment ? (
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {lead.apartment}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {lead.apartmentRooms && `${lead.apartmentRooms} camere`}
+                          {lead.apartmentArea && ` • ${lead.apartmentArea} m²`}
+                          {lead.apartmentPrice && ` • ${formatPrice(lead.apartmentPrice)}`}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
