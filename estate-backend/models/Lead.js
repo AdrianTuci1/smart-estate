@@ -20,8 +20,15 @@ class Lead {
     this.apartmentRooms = data.apartmentRooms || null;
     this.apartmentArea = data.apartmentArea || null;
     this.apartmentPrice = data.apartmentPrice || null;
+    this.history = data.history || []; // Array of history entries
+    this.files = data.files || []; // Array of file references
     this.createdAt = data.createdAt || new Date().toISOString();
     this.updatedAt = data.updatedAt || new Date().toISOString();
+    
+    // If propertyId is provided but not in propertiesOfInterest, add it
+    if (this.propertyId && !this.propertiesOfInterest.includes(this.propertyId)) {
+      this.propertiesOfInterest.push(this.propertyId);
+    }
   }
 
   // Create a new lead
@@ -185,7 +192,7 @@ class Lead {
       TableName: TABLES.LEADS,
       IndexName: 'CompanyIdIndex',
       KeyConditionExpression: 'companyId = :companyId',
-      FilterExpression: 'contains(propertiesOfInterest, :propertyId)',
+      FilterExpression: 'contains(propertiesOfInterest, :propertyId) OR propertyId = :propertyId',
       ExpressionAttributeValues: {
         ':companyId': companyId,
         ':propertyId': propertyId
@@ -198,6 +205,65 @@ class Lead {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  }
+
+  // Add history entry
+  async addHistoryEntry(entry) {
+    const historyEntry = {
+      id: entry.id || require('uuid').v4(),
+      type: entry.type,
+      date: entry.date,
+      time: entry.time || new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }),
+      notes: entry.notes,
+      createdAt: new Date().toISOString()
+    };
+
+    this.history.unshift(historyEntry); // Add to beginning of array
+    return await this.update({ history: this.history });
+  }
+
+  // Update history entry
+  async updateHistoryEntry(entryId, updateData) {
+    const entryIndex = this.history.findIndex(entry => entry.id === entryId);
+    if (entryIndex === -1) {
+      return { success: false, error: 'History entry not found' };
+    }
+
+    this.history[entryIndex] = {
+      ...this.history[entryIndex],
+      ...updateData,
+      updatedAt: new Date().toISOString()
+    };
+
+    return await this.update({ history: this.history });
+  }
+
+  // Delete history entry
+  async deleteHistoryEntry(entryId) {
+    this.history = this.history.filter(entry => entry.id !== entryId);
+    return await this.update({ history: this.history });
+  }
+
+  // Add file reference
+  async addFile(fileData) {
+    const fileEntry = {
+      id: fileData.id || require('uuid').v4(),
+      name: fileData.name,
+      type: fileData.type,
+      size: fileData.size,
+      url: fileData.url,
+      s3Key: fileData.s3Key,
+      createdAt: new Date().toISOString()
+    };
+
+    this.files.push(fileEntry);
+    return await this.update({ files: this.files });
+  }
+
+  // Delete file reference
+  async deleteFile(fileId) {
+    this.files = this.files.filter(file => file.id !== fileId);
+    return await this.update({ files: this.files });
   }
 }
 

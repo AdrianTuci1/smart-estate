@@ -103,15 +103,9 @@ const LeadDrawer = () => {
           });
         }
         
-        // Mock data for files and history
-        setFiles([
-          { id: 1, name: 'Ofertă personalizată', type: 'PDF', size: '1.2 MB', url: '#' },
-          { id: 2, name: 'Planuri apartament', type: 'PDF', size: '2.1 MB', url: '#' }
-        ]);
-        setHistory([
-          { id: 1, type: 'Apel telefonic', date: '2024-01-15', time: '14:30', notes: 'Clientul a fost interesat de apartamentul cu 3 camere. Urmează să trimit oferta detaliată.' },
-          { id: 2, type: 'Email trimis', date: '2024-01-12', time: '09:15', notes: 'Am trimis informații despre proprietățile disponibile în zona dorită.' }
-        ]);
+        // Load files and history from server
+        setFiles(selectedLead.files || []);
+        setHistory(selectedLead.history || []);
       }
     }
   }, [isLeadDrawerOpen, selectedLead]);
@@ -212,7 +206,9 @@ const LeadDrawer = () => {
           apartmentRooms: formData.apartmentRooms,
           apartmentArea: formData.apartmentArea,
           apartmentPrice: formData.apartmentPrice,
-          notes: formData.notes
+          notes: formData.notes,
+          history: history,
+          files: files
         };
         
         const response = await apiService.createLead(leadData);
@@ -316,28 +312,116 @@ const LeadDrawer = () => {
     setPreviewFile(null);
   };
 
-  const handleFileUpload = (event) => {
-    const uploadedFiles = Array.from(event.target.files).map((file, index) => ({
-      id: Date.now() + index,
-      name: file.name,
-      type: file.type.split('/')[1].toUpperCase(),
-      size: (file.size / 1024 / 1024).toFixed(1) + ' MB',
-      url: URL.createObjectURL(file)
-    }));
-    setFiles(prev => [...prev, ...uploadedFiles]);
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    
+    for (const file of files) {
+      try {
+        if (isCreating) {
+          // For new leads, just add to local state
+          const fileEntry = {
+            id: Date.now() + Math.random(),
+            name: file.name,
+            type: file.type.split('/')[1].toUpperCase(),
+            size: (file.size / 1024 / 1024).toFixed(1) + ' MB',
+            url: URL.createObjectURL(file)
+          };
+          setFiles(prev => [...prev, fileEntry]);
+        } else {
+          // For existing leads, upload to S3
+          const response = await apiService.uploadLeadFile(selectedLead.id, file);
+          
+          if (response.success) {
+            setFiles(response.data.files || []);
+          } else {
+            console.error('Error uploading file:', response.error);
+            // TODO: Show error message to user
+          }
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        // TODO: Show error message to user
+      }
+    }
   };
 
-  const handleAddHistoryEntry = () => {
+  const handleDeleteFile = async (fileId) => {
+    try {
+      if (isCreating) {
+        // For new leads, just remove from local state
+        setFiles(prev => prev.filter(f => f.id !== fileId));
+      } else {
+        // For existing leads, delete from server
+        const response = await apiService.deleteLeadFile(selectedLead.id, fileId);
+        
+        if (response.success) {
+          setFiles(response.data.files || []);
+        } else {
+          console.error('Error deleting file:', response.error);
+          // TODO: Show error message to user
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      // TODO: Show error message to user
+    }
+  };
+
+  const handleAddHistoryEntry = async () => {
     if (newHistoryEntry.type && newHistoryEntry.date && newHistoryEntry.notes) {
-      const entry = {
-        id: Date.now(),
-        type: newHistoryEntry.type,
-        date: newHistoryEntry.date,
-        time: new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }),
-        notes: newHistoryEntry.notes
-      };
-      setHistory(prev => [entry, ...prev]);
-      setNewHistoryEntry({ type: '', date: '', notes: '' });
+      try {
+        if (isCreating) {
+          // For new leads, just add to local state
+          const entry = {
+            id: Date.now(),
+            type: newHistoryEntry.type,
+            date: newHistoryEntry.date,
+            time: new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }),
+            notes: newHistoryEntry.notes
+          };
+          setHistory(prev => [entry, ...prev]);
+        } else {
+          // For existing leads, save to server
+          const response = await apiService.addLeadHistory(selectedLead.id, {
+            type: newHistoryEntry.type,
+            date: newHistoryEntry.date,
+            notes: newHistoryEntry.notes
+          });
+          
+          if (response.success) {
+            setHistory(response.data.history || []);
+          } else {
+            console.error('Error adding history entry:', response.error);
+            // TODO: Show error message to user
+          }
+        }
+        setNewHistoryEntry({ type: '', date: '', notes: '' });
+      } catch (error) {
+        console.error('Error adding history entry:', error);
+        // TODO: Show error message to user
+      }
+    }
+  };
+
+  const handleDeleteHistoryEntry = async (entryId) => {
+    try {
+      if (isCreating) {
+        // For new leads, just remove from local state
+        setHistory(prev => prev.filter(entry => entry.id !== entryId));
+      } else {
+        // For existing leads, delete from server
+        const response = await apiService.deleteLeadHistory(selectedLead.id, entryId);
+        
+        if (response.success) {
+          setHistory(response.data.history || []);
+        } else {
+          console.error('Error deleting history entry:', response.error);
+          // TODO: Show error message to user
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting history entry:', error);
+      // TODO: Show error message to user
     }
   };
 
@@ -372,7 +456,7 @@ const LeadDrawer = () => {
   return (
     <>
       {/* Drawer */}
-      <div className={`fixed inset-y-0 right-0 z-50 ${previewFile ? 'w-full' : 'w-96'} bg-white/95 backdrop-blur-sm shadow-drawer transform transition-all duration-300 ease-in-out ${isLeadDrawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed inset-y-0 right-0 z-[60] ${previewFile ? 'w-full' : 'w-96'} bg-white/95 backdrop-blur-sm shadow-drawer transform transition-all duration-300 ease-in-out ${isLeadDrawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex h-full">
           {/* Main Content */}
           <div className={`flex flex-col ${previewFile ? 'w-96 border-r border-gray-200' : 'w-full'}`}>
@@ -637,6 +721,13 @@ const LeadDrawer = () => {
                           </p>
                           <p className="text-sm text-gray-600 mt-2">{entry.notes}</p>
                         </div>
+                        <button
+                          onClick={() => handleDeleteHistoryEntry(entry.id)}
+                          className="text-red-600 hover:text-red-800 p-1 ml-2"
+                          title="Șterge intrarea"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -681,7 +772,7 @@ const LeadDrawer = () => {
                           <Eye className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => setFiles(prev => prev.filter(f => f.id !== file.id))}
+                          onClick={() => handleDeleteFile(file.id)}
                           className="text-red-600 hover:text-red-800 p-1"
                           title="Șterge fișier"
                         >

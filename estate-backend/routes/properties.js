@@ -1,5 +1,7 @@
 const express = require('express');
 const multer = require('multer');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 const Property = require('../models/Property');
 const Lead = require('../models/Lead');
@@ -92,13 +94,13 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
   // Get leads interested in this property
   const leadsResult = await Lead.getByPropertyInterest(req.user.companyId, id);
-  const interestedLeads = leadsResult.success ? leadsResult.data : [];
+  const leads = leadsResult.success ? leadsResult.data : [];
 
   res.json({
     success: true,
     data: {
       ...result.data,
-      interestedLeads
+      leads
     }
   });
 }));
@@ -459,6 +461,143 @@ router.post('/:id/documents', upload.single('file'), asyncHandler(async (req, re
       error: 'Failed to process document upload'
     });
   }
+}));
+
+// @route   POST /api/properties/:id/files/upload
+// @desc    Upload file for property to S3
+// @access  Private
+router.post('/:id/files/upload', upload.single('file'), asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      error: 'No file uploaded'
+    });
+  }
+
+  // First, get the property to check ownership
+  const getResult = await Property.getById(id);
+  
+  if (!getResult.success || !getResult.data) {
+    return res.status(404).json({
+      success: false,
+      error: 'Property not found'
+    });
+  }
+
+  if (getResult.data.companyId !== req.user.companyId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  try {
+    // Generate S3 key for the file
+    const fileExtension = path.extname(req.file.originalname);
+    const s3Key = `properties/${id}/${Date.now()}-${Math.round(Math.random() * 1E9)}${fileExtension}`;
+    
+    // Upload file to S3
+    const uploadResult = await s3Utils.uploadFile(
+      req.file.buffer,
+      s3Key,
+      req.file.mimetype
+    );
+
+    if (!uploadResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: uploadResult.error
+      });
+    }
+
+    // Create file data
+    const fileData = {
+      id: require('uuid').v4(),
+      name: req.file.originalname,
+      type: fileExtension.substring(1).toUpperCase(),
+      size: (req.file.size / 1024 / 1024).toFixed(1) + ' MB',
+      url: uploadResult.url,
+      s3Key: s3Key,
+      createdAt: new Date().toISOString()
+    };
+
+    const property = new Property(getResult.data);
+    const result = await property.addFile(fileData);
+    
+    if (!result.success) {
+      // If database update fails, delete the file from S3
+      await s3Utils.deleteFile(s3Key);
+      return res.status(400).json({
+        success: false,
+        error: result.error
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result.data
+    });
+  } catch (error) {
+    console.error('File upload error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'File upload failed'
+    });
+  }
+}));
+
+// @route   DELETE /api/properties/:id/files/:fileId
+// @desc    Delete file reference from property and S3
+// @access  Private
+router.delete('/:id/files/:fileId', asyncHandler(async (req, res) => {
+  const { id, fileId } = req.params;
+
+  // First, get the property to check ownership
+  const getResult = await Property.getById(id);
+  
+  if (!getResult.success || !getResult.data) {
+    return res.status(404).json({
+      success: false,
+      error: 'Property not found'
+    });
+  }
+
+  if (getResult.data.companyId !== req.user.companyId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  // Find the file to get S3 key before deleting
+  const fileToDelete = getResult.data.files.find(file => file.id === fileId);
+  
+  const property = new Property(getResult.data);
+  const result = await property.deleteFile(fileId);
+  
+  if (!result.success) {
+    return res.status(400).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  // Delete file from S3 if it exists
+  if (fileToDelete && fileToDelete.s3Key) {
+    try {
+      await s3Utils.deleteFile(fileToDelete.s3Key);
+    } catch (error) {
+      console.error('Error deleting file from S3:', error);
+      // Don't fail the request if S3 deletion fails
+    }
+  }
+
+  res.json({
+    success: true,
+    data: result.data
+  });
 }));
 
 module.exports = router;

@@ -371,9 +371,6 @@ const PropertyMap = () => {
                       {selectedMarker.status === 'finalizată' ? 'Finalizată' : 'În construcție'}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {selectedMarker.leads?.length || 0} lead-uri interesate
-                  </p>
                 </div>
               </div>
             </div>

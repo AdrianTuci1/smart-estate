@@ -16,6 +16,7 @@ class Property {
     this.area = data.area || null;
     this.coordinates = data.coordinates || null; // { lat: number, lng: number }
     this.documents = data.documents || []; // Array of document URLs and extracted data
+    this.files = data.files || []; // Array of file references
     this.createdAt = data.createdAt || new Date().toISOString();
     this.updatedAt = data.updatedAt || new Date().toISOString();
   }
@@ -203,6 +204,28 @@ class Property {
   async removeDocument(documentUrl) {
     this.documents = this.documents.filter(doc => doc.url !== documentUrl);
     return await this.update({ documents: this.documents });
+  }
+
+  // Add file reference
+  async addFile(fileData) {
+    const fileEntry = {
+      id: fileData.id || require('uuid').v4(),
+      name: fileData.name,
+      type: fileData.type,
+      size: fileData.size,
+      url: fileData.url,
+      s3Key: fileData.s3Key,
+      createdAt: fileData.createdAt || new Date().toISOString()
+    };
+
+    this.files.push(fileEntry);
+    return await this.update({ files: this.files });
+  }
+
+  // Delete file reference
+  async deleteFile(fileId) {
+    this.files = this.files.filter(file => file.id !== fileId);
+    return await this.update({ files: this.files });
   }
 
   // Delete property

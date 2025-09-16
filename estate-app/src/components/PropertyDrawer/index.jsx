@@ -24,6 +24,8 @@ const PropertyDrawer = () => {
   });
   const [galleryImages, setGalleryImages] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [propertyWithLeads, setPropertyWithLeads] = useState(null);
+  const [isLoadingLeads, setIsLoadingLeads] = useState(false);
 
   // Check if we're in create mode (selectedProperty is null but drawer is open)
   useEffect(() => {
@@ -72,6 +74,33 @@ const PropertyDrawer = () => {
       }
     }
   }, [isDrawerOpen, selectedProperty]);
+
+  // Fetch property with leads when leads tab is selected
+  const fetchPropertyWithLeads = async (propertyId) => {
+    if (!propertyId) return;
+    
+    setIsLoadingLeads(true);
+    try {
+      const response = await apiService.getProperty(propertyId);
+      if (response.success) {
+        setPropertyWithLeads(response.data);
+      } else {
+        console.error('Failed to fetch property with leads:', response.error);
+      }
+    } catch (error) {
+      console.error('Error fetching property with leads:', error);
+    } finally {
+      setIsLoadingLeads(false);
+    }
+  };
+
+  // Handle tab change
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'leads' && selectedProperty?.id) {
+      fetchPropertyWithLeads(selectedProperty.id);
+    }
+  };
 
   if (!isDrawerOpen) return null;
 
@@ -249,7 +278,10 @@ const PropertyDrawer = () => {
           )}
 
           {activeTab === 'leads' && (
-            <PropertyLeads selectedProperty={selectedProperty} />
+            <PropertyLeads 
+              selectedProperty={propertyWithLeads || selectedProperty} 
+              isLoading={isLoadingLeads}
+            />
           )}
 
           {activeTab === 'files' && (
@@ -272,7 +304,7 @@ const PropertyDrawer = () => {
         {/* Tabs at bottom */}
         <div className="flex border-t border-gray-200">
           <button
-            onClick={() => setActiveTab('description')}
+            onClick={() => handleTabChange('description')}
             className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${
               activeTab === 'description'
                 ? 'text-primary-600 border-t-2 border-primary-600 bg-primary-50'
@@ -282,7 +314,7 @@ const PropertyDrawer = () => {
             <FileText className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setActiveTab('apartments')}
+            onClick={() => handleTabChange('apartments')}
             className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${
               activeTab === 'apartments'
                 ? 'text-primary-600 border-t-2 border-primary-600 bg-primary-50'
@@ -292,7 +324,7 @@ const PropertyDrawer = () => {
             <Building2 className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setActiveTab('leads')}
+            onClick={() => handleTabChange('leads')}
             className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${
               activeTab === 'leads'
                 ? 'text-primary-600 border-t-2 border-primary-600 bg-primary-50'
@@ -302,7 +334,7 @@ const PropertyDrawer = () => {
             <Users className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setActiveTab('files')}
+            onClick={() => handleTabChange('files')}
             className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${
               activeTab === 'files'
                 ? 'text-primary-600 border-t-2 border-primary-600 bg-primary-50'

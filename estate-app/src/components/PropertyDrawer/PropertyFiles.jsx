@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileText, FileImage, Upload, Trash2, Eye, File, FileType } from 'lucide-react';
 import apiService from '../../services/api';
 
@@ -7,9 +7,18 @@ const PropertyFiles = ({ selectedProperty, isEditing, isCreating }) => {
   const [previewFile, setPreviewFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Load files when property changes
+  useEffect(() => {
+    if (selectedProperty?.files) {
+      setFiles(selectedProperty.files);
+    } else {
+      setFiles([]);
+    }
+  }, [selectedProperty]);
+
   const handleFileUpload = async (event) => {
     const uploadedFiles = Array.from(event.target.files);
-    const allowedTypes = ['.pdf', '.docx', '.doc', '.txt'];
+    const allowedTypes = ['.pdf', '.docx', '.doc', '.txt', '.jpg', '.jpeg', '.png', '.gif'];
     
     // Filter for allowed file types
     const validFiles = uploadedFiles.filter(file => {
@@ -18,7 +27,7 @@ const PropertyFiles = ({ selectedProperty, isEditing, isCreating }) => {
     });
 
     if (validFiles.length === 0) {
-      alert('Vă rugăm să selectați fișiere PDF, DOCX, DOC sau TXT');
+      alert('Vă rugăm să selectați fișiere PDF, DOCX, DOC, TXT sau imagini');
       return;
     }
 
@@ -27,34 +36,26 @@ const PropertyFiles = ({ selectedProperty, isEditing, isCreating }) => {
     try {
       // Process each file
       for (const file of validFiles) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('propertyId', selectedProperty?.id);
-
-        // Upload file and extract data
-        const response = await apiService.uploadPropertyDocument(formData);
-        
-        if (response.success) {
+        if (isCreating) {
+          // For new properties, just add to local state
           const newFile = {
             id: Date.now() + Math.random(),
             name: file.name,
             type: file.type.split('/')[1].toUpperCase(),
             size: (file.size / 1024 / 1024).toFixed(1) + ' MB',
-            url: response.data.fileUrl,
-            extractedData: response.data.extractedData,
-            file: file
+            url: URL.createObjectURL(file)
           };
-          
           setFiles(prev => [...prev, newFile]);
-          
-          // Show extracted data if available
-          if (response.data.extractedData) {
-            console.log('Extracted data:', response.data.extractedData);
-            // Here you could show a modal or notification about extracted data
-          }
         } else {
-          console.error('Failed to upload file:', response.error);
-          alert(`Eroare la încărcarea fișierului ${file.name}: ${response.error}`);
+          // For existing properties, upload to S3
+          const response = await apiService.uploadPropertyFile(selectedProperty.id, file);
+          
+          if (response.success) {
+            setFiles(response.data.files || []);
+          } else {
+            console.error('Failed to upload file:', response.error);
+            alert(`Eroare la încărcarea fișierului ${file.name}: ${response.error}`);
+          }
         }
       }
     } catch (error) {
@@ -62,6 +63,28 @@ const PropertyFiles = ({ selectedProperty, isEditing, isCreating }) => {
       alert('Eroare la încărcarea fișierelor. Vă rugăm să încercați din nou.');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleDeleteFile = async (fileId) => {
+    try {
+      if (isCreating) {
+        // For new properties, just remove from local state
+        setFiles(prev => prev.filter(f => f.id !== fileId));
+      } else {
+        // For existing properties, delete from server
+        const response = await apiService.deletePropertyFile(selectedProperty.id, fileId);
+        
+        if (response.success) {
+          setFiles(response.data.files || []);
+        } else {
+          console.error('Error deleting file:', response.error);
+          alert('Eroare la ștergerea fișierului');
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      alert('Eroare la ștergerea fișierului');
     }
   };
 
@@ -104,7 +127,7 @@ const PropertyFiles = ({ selectedProperty, isEditing, isCreating }) => {
                 multiple
                 onChange={handleFileUpload}
                 className="hidden"
-                accept=".pdf,.docx,.doc,.txt"
+                accept=".pdf,.docx,.doc,.txt,.jpg,.jpeg,.png,.gif"
                 disabled={isUploading}
               />
             </label>
@@ -117,13 +140,11 @@ const PropertyFiles = ({ selectedProperty, isEditing, isCreating }) => {
             <div className="flex items-start space-x-3">
               <FileText className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-sm font-medium text-blue-800">Analiză automată de documente</h4>
+                <h4 className="text-sm font-medium text-blue-800">Galerie și documente</h4>
                 <p className="text-xs text-blue-600 mt-1">
-                  Încărcați contracte, planuri sau documentație PDF/DOCX pentru extragerea automată a:
-                  <br />• Suprafața proprietății
-                  <br />• Numărul de camere
-                  <br />• Prețul de vânzare
-                  <br />• Alte detalii relevante
+                  Încărcați imagini, contracte, planuri sau documentație pentru proprietate.
+                  <br />• Imagini: JPG, PNG, GIF
+                  <br />• Documente: PDF, DOCX, DOC, TXT
                 </p>
               </div>
             </div>
@@ -137,18 +158,6 @@ const PropertyFiles = ({ selectedProperty, isEditing, isCreating }) => {
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900">{file.name}</p>
                 <p className="text-xs text-gray-500">{file.type} • {file.size}</p>
-                {file.extractedData && (
-                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
-                    <p className="text-xs text-green-700 font-medium">Date extrase:</p>
-                    <div className="text-xs text-green-600 mt-1">
-                      {Object.entries(file.extractedData).map(([key, value]) => (
-                        <div key={key}>
-                          <span className="font-medium">{key}:</span> {value}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="flex items-center space-x-2">
                 <button
@@ -160,7 +169,7 @@ const PropertyFiles = ({ selectedProperty, isEditing, isCreating }) => {
                 </button>
                 {(isEditing || isCreating) && (
                   <button
-                    onClick={() => setFiles(prev => prev.filter(f => f.id !== file.id))}
+                    onClick={() => handleDeleteFile(file.id)}
                     className="text-red-600 hover:text-red-800 p-1"
                     title="Șterge fișier"
                   >

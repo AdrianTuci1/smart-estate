@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit3, Trash2, Upload, FileText, FileImage, Building2, Home, Euro, Square } from 'lucide-react';
+import { Plus, Edit3, Trash2, Upload, FileText, FileImage, Building2, Home, Euro, Square, Brain, FileSearch } from 'lucide-react';
 import apiService from '../../services/api';
 
 const PropertyApartments = ({ selectedProperty, isEditing, isCreating }) => {
@@ -161,6 +161,23 @@ const PropertyApartments = ({ selectedProperty, isEditing, isCreating }) => {
     }
   };
 
+  const handleAnalyzeDocument = async (apartmentId) => {
+    // This will trigger document analysis for the apartment
+    try {
+      const response = await apiService.analyzeApartmentDocument(apartmentId);
+      if (response.success) {
+        // Update the apartment with extracted data
+        await loadApartments();
+        alert('Analiza documentului a fost completată cu succes!');
+      } else {
+        alert('Eroare la analiza documentului: ' + response.error);
+      }
+    } catch (error) {
+      console.error('Error analyzing document:', error);
+      alert('Eroare la analiza documentului. Vă rugăm să încercați din nou.');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -200,7 +217,7 @@ const PropertyApartments = ({ selectedProperty, isEditing, isCreating }) => {
             {editingId ? 'Editează apartament' : 'Apartament nou'}
           </h4>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Numărul apartamentului *
@@ -210,7 +227,7 @@ const PropertyApartments = ({ selectedProperty, isEditing, isCreating }) => {
                 value={formData.apartmentNumber}
                 onChange={(e) => handleInputChange('apartmentNumber', e.target.value)}
                 placeholder="Ex: A12, B5, C301"
-                className="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -225,7 +242,7 @@ const PropertyApartments = ({ selectedProperty, isEditing, isCreating }) => {
                 placeholder="Ex: 3"
                 min="1"
                 max="10"
-                className="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -240,7 +257,7 @@ const PropertyApartments = ({ selectedProperty, isEditing, isCreating }) => {
                 placeholder="Ex: 75"
                 min="0"
                 step="0.1"
-                className="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -255,7 +272,7 @@ const PropertyApartments = ({ selectedProperty, isEditing, isCreating }) => {
                 placeholder="Ex: 150000"
                 min="0"
                 step="100"
-                className="w-full p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -355,6 +372,18 @@ const PropertyApartments = ({ selectedProperty, isEditing, isCreating }) => {
                         </label>
                       )}
                     </div>
+
+                    {/* Document Analysis Button */}
+                    {apartment.documents?.length > 0 && (isEditing || isCreating) && (
+                      <button
+                        onClick={() => handleAnalyzeDocument(apartment.id)}
+                        className="flex items-center space-x-1 text-xs text-purple-600 hover:text-purple-800 transition-colors"
+                        title="Analizează documentele pentru a extrage datele automat"
+                      >
+                        <Brain className="h-3 w-3" />
+                        <span>Analizează</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
