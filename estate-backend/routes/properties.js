@@ -1,0 +1,464 @@
+const express = require('express');
+const multer = require('multer');
+const router = express.Router();
+const Property = require('../models/Property');
+const Lead = require('../models/Lead');
+const { authenticateToken, requireCompanyAccess } = require('../middleware/auth');
+const { validate, schemas } = require('../middleware/validation');
+const { asyncHandler } = require('../middleware/errorHandler');
+const { s3Utils, textractUtils, S3_CONFIG } = require('../config/aws');
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'text/plain'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tip de fișier nepermis. Doar PDF, DOCX, DOC și TXT sunt acceptate.'), false);
+    }
+  }
+});
+
+// Apply authentication and company access middleware to all routes
+router.use(authenticateToken);
+router.use(requireCompanyAccess);
+
+// @route   GET /api/properties
+// @desc    Get all properties for the company
+// @access  Private
+router.get('/', asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20, status } = req.query;
+  const offset = (page - 1) * limit;
+
+  let result;
+  if (status) {
+    result = await Property.getByStatus(req.user.companyId, status);
+  } else {
+    result = await Property.getByCompany(req.user.companyId, parseInt(limit));
+  }
+
+  if (!result.success) {
+    return res.status(500).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  res.json({
+    success: true,
+    data: result.data,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      hasMore: result.hasMore || false
+    }
+  });
+}));
+
+// @route   GET /api/properties/:id
+// @desc    Get single property by ID
+// @access  Private
+router.get('/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const result = await Property.getById(id);
+  
+  if (!result.success) {
+    return res.status(500).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  if (!result.data) {
+    return res.status(404).json({
+      success: false,
+      error: 'Property not found'
+    });
+  }
+
+  // Check if property belongs to user's company
+  if (result.data.companyId !== req.user.companyId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  // Get leads interested in this property
+  const leadsResult = await Lead.getByPropertyInterest(req.user.companyId, id);
+  const interestedLeads = leadsResult.success ? leadsResult.data : [];
+
+  res.json({
+    success: true,
+    data: {
+      ...result.data,
+      interestedLeads
+    }
+  });
+}));
+
+// @route   POST /api/properties
+// @desc    Create new property
+// @access  Private
+router.post('/', validate(schemas.property), asyncHandler(async (req, res) => {
+  const propertyData = {
+    ...req.body,
+    companyId: req.user.companyId
+  };
+
+  // Convert position to coordinates for database storage
+  if (propertyData.position && !propertyData.coordinates) {
+    propertyData.coordinates = propertyData.position;
+  }
+
+  const result = await Property.create(propertyData);
+  
+  if (!result.success) {
+    return res.status(400).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  res.status(201).json({
+    success: true,
+    data: result.data
+  });
+}));
+
+// @route   PUT /api/properties/:id
+// @desc    Update property
+// @access  Private
+router.put('/:id', validate(schemas.property), asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  // First, get the property to check ownership
+  const getResult = await Property.getById(id);
+  
+  if (!getResult.success || !getResult.data) {
+    return res.status(404).json({
+      success: false,
+      error: 'Property not found'
+    });
+  }
+
+  if (getResult.data.companyId !== req.user.companyId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  // Convert position to coordinates for database storage
+  const updateData = { ...req.body };
+  if (updateData.position && !updateData.coordinates) {
+    updateData.coordinates = updateData.position;
+  }
+
+  const property = new Property(getResult.data);
+  const result = await property.update(updateData);
+  
+  if (!result.success) {
+    return res.status(400).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  res.json({
+    success: true,
+    data: result.data
+  });
+}));
+
+// @route   DELETE /api/properties/:id
+// @desc    Delete property
+// @access  Private
+router.delete('/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  // First, get the property to check ownership
+  const getResult = await Property.getById(id);
+  
+  if (!getResult.success || !getResult.data) {
+    return res.status(404).json({
+      success: false,
+      error: 'Property not found'
+    });
+  }
+
+  if (getResult.data.companyId !== req.user.companyId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  // Delete associated images from S3
+  if (getResult.data.images && getResult.data.images.length > 0) {
+    for (const imageUrl of getResult.data.images) {
+      // Extract key from S3 URL
+      const key = imageUrl.split('/').pop();
+      await s3Utils.deleteFile(`properties/${id}/${key}`);
+    }
+  }
+
+  const result = await Property.delete(id);
+  
+  if (!result.success) {
+    return res.status(500).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  res.json({
+    success: true,
+    message: 'Property deleted successfully'
+  });
+}));
+
+// @route   GET /api/properties/map/bounds
+// @desc    Get properties within map bounds
+// @access  Private
+router.get('/map/bounds', asyncHandler(async (req, res) => {
+  const { north, south, east, west } = req.query;
+
+  if (!north || !south || !east || !west) {
+    return res.status(400).json({
+      success: false,
+      error: 'Map bounds are required (north, south, east, west)'
+    });
+  }
+
+  const bounds = {
+    north: parseFloat(north),
+    south: parseFloat(south),
+    east: parseFloat(east),
+    west: parseFloat(west)
+  };
+
+  const result = await Property.getByCoordinates(req.user.companyId, bounds);
+  
+  if (!result.success) {
+    return res.status(500).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  res.json({
+    success: true,
+    data: result.data
+  });
+}));
+
+// @route   POST /api/properties/:id/images
+// @desc    Upload image for property
+// @access  Private
+router.post('/:id/images', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { imageUrl } = req.body;
+
+  if (!imageUrl) {
+    return res.status(400).json({
+      success: false,
+      error: 'Image URL is required'
+    });
+  }
+
+  // First, get the property to check ownership
+  const getResult = await Property.getById(id);
+  
+  if (!getResult.success || !getResult.data) {
+    return res.status(404).json({
+      success: false,
+      error: 'Property not found'
+    });
+  }
+
+  if (getResult.data.companyId !== req.user.companyId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  const property = new Property(getResult.data);
+  const result = await property.addImage(imageUrl);
+  
+  if (!result.success) {
+    return res.status(400).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  res.json({
+    success: true,
+    data: result.data
+  });
+}));
+
+// @route   DELETE /api/properties/:id/images/:imageUrl
+// @desc    Remove image from property
+// @access  Private
+router.delete('/:id/images/:imageUrl', asyncHandler(async (req, res) => {
+  const { id, imageUrl } = req.params;
+  const decodedImageUrl = decodeURIComponent(imageUrl);
+
+  // First, get the property to check ownership
+  const getResult = await Property.getById(id);
+  
+  if (!getResult.success || !getResult.data) {
+    return res.status(404).json({
+      success: false,
+      error: 'Property not found'
+    });
+  }
+
+  if (getResult.data.companyId !== req.user.companyId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  const property = new Property(getResult.data);
+  const result = await property.removeImage(decodedImageUrl);
+  
+  if (!result.success) {
+    return res.status(400).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  // Delete image from S3
+  const key = decodedImageUrl.split('/').pop();
+  await s3Utils.deleteFile(`properties/${id}/${key}`);
+
+  res.json({
+    success: true,
+    data: result.data
+  });
+}));
+
+// @route   POST /api/properties/:id/documents
+// @desc    Upload document for property and extract data
+// @access  Private
+router.post('/:id/documents', upload.single('file'), asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      error: 'No file uploaded'
+    });
+  }
+
+  // First, get the property to check ownership
+  const getResult = await Property.getById(id);
+  
+  if (!getResult.success || !getResult.data) {
+    return res.status(404).json({
+      success: false,
+      error: 'Property not found'
+    });
+  }
+
+  if (getResult.data.companyId !== req.user.companyId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  try {
+    // Upload file to S3
+    const fileExtension = req.file.originalname.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+    const s3Key = `properties/${id}/documents/${fileName}`;
+    
+    const uploadResult = await s3Utils.uploadFile(req.file.buffer, s3Key, req.file.mimetype);
+    
+    if (!uploadResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to upload file to storage'
+      });
+    }
+
+    // Extract data using AWS Textract
+    let extractedData = {
+      area: null,
+      rooms: null,
+      price: null,
+      apartmentNumber: null,
+      notes: 'Document încărcat cu succes.'
+    };
+
+    try {
+      const textractResult = await textractUtils.extractTextFromDocument(
+        S3_CONFIG.BUCKET_NAME, 
+        s3Key
+      );
+      
+      if (textractResult.success) {
+        extractedData = textractResult.data.apartmentData;
+        console.log('Textract extraction successful:', extractedData);
+      } else {
+        console.log('Textract extraction failed:', textractResult.error);
+        extractedData.notes = 'Document încărcat cu succes, dar extragerea automată a datelor a eșuat.';
+      }
+    } catch (textractError) {
+      console.error('Textract processing error:', textractError);
+      extractedData.notes = 'Document încărcat cu succes, dar extragerea automată a datelor a eșuat.';
+    }
+
+    // Create document object
+    const document = {
+      url: uploadResult.data.url,
+      name: req.file.originalname,
+      type: req.file.mimetype,
+      size: req.file.size,
+      uploadedAt: new Date().toISOString(),
+      extractedData: extractedData
+    };
+
+    // Add document to property
+    const property = new Property(getResult.data);
+    const updateResult = await property.addDocument(document);
+    
+    if (!updateResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to save document metadata'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        document: document,
+        fileUrl: uploadResult.data.url,
+        extractedData: extractedData
+      }
+    });
+
+  } catch (error) {
+    console.error('Document upload error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process document upload'
+    });
+  }
+}));
+
+module.exports = router;
