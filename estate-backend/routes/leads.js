@@ -322,10 +322,10 @@ router.put('/:id/status', asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  if (!status || !['active', 'contacted', 'converted', 'lost'].includes(status)) {
+  if (!status || !['New', 'Attempted', 'Connected', 'Progress', 'Potential', 'Customer'].includes(status)) {
     return res.status(400).json({
       success: false,
-      error: 'Valid status is required (active, contacted, converted, lost)'
+      error: 'Valid status is required (New, Attempted, Connected, Progress, Potential, Customer)'
     });
   }
 

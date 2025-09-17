@@ -48,20 +48,38 @@ const schemas = {
   // Lead schemas
   lead: Joi.object({
     name: Joi.string().min(2).max(100).required(),
-    phone: Joi.string().min(5).max(20).optional().allow(''),
-    email: Joi.string().email().optional().allow(''),
-    notes: Joi.string().max(1000).optional().allow(''),
+    phone: Joi.string().optional().allow('').allow(null),
+    email: Joi.string().optional().allow('').allow(null),
+    notes: Joi.string().max(1000).optional().allow('').allow(null),
     status: Joi.string().valid('New', 'Attempted', 'Connected', 'Progress', 'Potential', 'Customer').default('New'),
-    interest: Joi.string().max(200).optional().allow(''),
-    property: Joi.string().max(200).optional().allow(''),
-    propertyId: Joi.string().optional().allow(''),
-    propertyAddress: Joi.string().max(300).optional().allow(''),
-    apartment: Joi.string().max(100).optional().allow(''),
-    apartmentId: Joi.string().optional().allow(''),
+    interest: Joi.string().max(200).optional().allow('').allow(null),
+    property: Joi.string().max(200).optional().allow('').allow(null),
+    propertyId: Joi.string().optional().allow('').allow(null),
+    propertyAddress: Joi.string().max(300).optional().allow('').allow(null),
+    apartment: Joi.string().max(100).optional().allow('').allow(null),
+    apartmentId: Joi.string().optional().allow('').allow(null),
     apartmentRooms: Joi.number().integer().min(1).max(10).optional().allow(null),
     apartmentArea: Joi.number().positive().optional().allow(null),
     apartmentPrice: Joi.number().positive().optional().allow(null),
-    propertiesOfInterest: Joi.array().items(Joi.string()).default([])
+    propertiesOfInterest: Joi.array().items(Joi.string()).default([]),
+    // Add history and files fields for lead creation/update
+    history: Joi.array().items(Joi.object({
+      id: Joi.string().optional(),
+      type: Joi.string().required(),
+      date: Joi.string().required(),
+      time: Joi.string().optional(),
+      notes: Joi.string().required(),
+      createdAt: Joi.string().optional()
+    })).default([]),
+    files: Joi.array().items(Joi.object({
+      id: Joi.string().optional(),
+      name: Joi.string().required(),
+      type: Joi.string().required(),
+      size: Joi.string().optional(),
+      url: Joi.string().required(),
+      s3Key: Joi.string().optional(),
+      createdAt: Joi.string().optional()
+    })).default([])
   }),
 
   // Property schemas
