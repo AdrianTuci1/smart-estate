@@ -64,61 +64,6 @@ const LoginForm = ({ onLogin, onShowCompanySetup }) => {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setIsLoading(true);
-    setError('');
-
-    try {
-      // Try to login with demo credentials
-      const response = await apiService.login({
-        companyAlias: 'demo',
-        username: 'demo',
-        password: 'demo123'
-      });
-
-      if (response.success && response.data) {
-        const { token, user } = response.data;
-        
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('companyAlias', user.companyAlias);
-        localStorage.setItem('username', user.username);
-        
-        onLogin({
-          token,
-          companyAlias: user.companyAlias,
-          username: user.username,
-          user: user
-        });
-      } else {
-        // Fallback to mock demo if backend demo user doesn't exist
-        const mockToken = 'demo-jwt-token-' + Date.now();
-        localStorage.setItem('authToken', mockToken);
-        localStorage.setItem('companyAlias', 'demo-imobiliare');
-        localStorage.setItem('username', 'demo-user');
-        
-        onLogin({
-          token: mockToken,
-          companyAlias: 'demo-imobiliare',
-          username: 'demo-user'
-        });
-      }
-    } catch (err) {
-      console.error('Demo login error:', err);
-      // Fallback to mock demo if backend is not available
-      const mockToken = 'demo-jwt-token-' + Date.now();
-      localStorage.setItem('authToken', mockToken);
-      localStorage.setItem('companyAlias', 'demo-imobiliare');
-      localStorage.setItem('username', 'demo-user');
-      
-      onLogin({
-        token: mockToken,
-        companyAlias: 'demo-imobiliare',
-        username: 'demo-user'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-secondary-50 px-4">
@@ -221,7 +166,7 @@ const LoginForm = ({ onLogin, onShowCompanySetup }) => {
             </div>
           )}
 
-          <div className="space-y-3">
+          <div>
             <button
               type="submit"
               disabled={isLoading}
@@ -236,41 +181,14 @@ const LoginForm = ({ onLogin, onShowCompanySetup }) => {
                 'Conectare'
               )}
             </button>
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">sau</span>
-              </div>
-            </div>
-            
-            <button
-              type="button"
-              onClick={handleDemoLogin}
-              disabled={isLoading}
-              className="btn btn-secondary w-full h-12 text-base"
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600 mr-2"></div>
-                  Se conectează...
-                </div>
-              ) : (
-                'Demo - Conectare Rapidă'
-              )}
-            </button>
           </div>
         </form>
 
         <div className="text-center text-sm text-gray-500">
-          <p>Pentru testare rapidă, folosiți butonul "Demo - Conectare Rapidă"</p>
-          <p className="mt-1">sau introduceți orice valori în formular</p>
           <button
             type="button"
             onClick={onShowCompanySetup}
-            className="mt-3 text-primary-600 hover:text-primary-500 font-medium"
+            className="text-primary-600 hover:text-primary-500 font-medium"
           >
             Creează o companie nouă
           </button>

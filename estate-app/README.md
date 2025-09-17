@@ -90,21 +90,12 @@ src/
 └── main.jsx                   # Entry point
 ```
 
-## 🔐 Autentificare Demo
+## 🔐 Autentificare
 
-Aplicația include două opțiuni de testare:
-
-### Opțiunea 1: Conectare Rapidă Demo
-- Apăsați butonul **"Demo - Conectare Rapidă"**
-- Vă veți conecta automat cu contul demo:
-  - **Alias Companie**: `demo-imobiliare`
-  - **Nume utilizator**: `demo-user`
-
-### Opțiunea 2: Formular Manual
-Introduceți orice valori în formularul de login:
-- **Alias Companie**: orice text
-- **Nume utilizator**: orice text  
-- **Parolă**: orice text
+Aplicația necesită autentificare cu credențiale valide:
+- **Alias Companie**: alias-ul companiei
+- **Nume utilizator**: numele de utilizator
+- **Parolă**: parola asociată
 
 ## 🚧 Funcționalități Viitoare
 

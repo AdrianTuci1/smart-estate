@@ -101,7 +101,7 @@ Ar trebui să returnați:
 # Test autentificare
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"companyAlias":"demo","username":"demo","password":"demo123"}'
+  -d '{"companyAlias":"your-company","username":"your-username","password":"your-password"}'
 
 # Test lead-uri
 curl -X GET http://localhost:3000/api/leads \
