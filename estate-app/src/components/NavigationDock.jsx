@@ -57,7 +57,6 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
     // If result has coordinates, center the map
     if (result.lat && result.lng) {
       setMapCenter({ lat: result.lat, lng: result.lng });
-      setActiveView('map'); // Switch to map view when coordinates are available
     }
     
     if (onResultSelect) {
@@ -72,7 +71,6 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
     // Center map on selected city using coordinates from server
     if (city.lat && city.lng) {
       setMapCenter({ lat: city.lat, lng: city.lng });
-      setActiveView('map'); // Switch to map view when city is selected
     }
     
     if (onCitySelect) {

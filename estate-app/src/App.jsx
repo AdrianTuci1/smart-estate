@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import useAppStore from './stores/useAppStore';
-import useAuthStore from './stores/useAuthStore';
 import useSearchStore from './stores/useSearchStore';
 import apiService from './services/api';
 import LoginForm from './components/LoginForm';
@@ -58,38 +57,50 @@ const AppContent = () => {
     // Navigare automată în funcție de tipul rezultatului
     if (result.type === 'lead') {
       if (result.lat && result.lng) {
-        // Lead cu coordonate - găsesc proprietatea asociată și o selectez
+        // Lead cu coordonate - centrez harta doar dacă suntem pe view-ul de hartă
         setMapCenter({ lat: result.lat, lng: result.lng });
-        setActiveView('map');
         
-        // Găsesc proprietatea asociată cu lead-ul
-        try {
-          let propertyToSelect = null;
-          
-          // Dacă lead-ul are o proprietate specifică
-          if (result.propertyId) {
-            const propertyResponse = await apiService.getProperty(result.propertyId);
-            if (propertyResponse.success && propertyResponse.data) {
-              propertyToSelect = propertyResponse.data;
+        // Deschid drawer-ul doar dacă suntem pe view-ul de hartă
+        if (activeView === 'map') {
+          // Găsesc proprietatea asociată cu lead-ul
+          try {
+            let propertyToSelect = null;
+            
+            // Dacă lead-ul are o proprietate specifică
+            if (result.propertyId) {
+              const propertyResponse = await apiService.getProperty(result.propertyId);
+              if (propertyResponse.success && propertyResponse.data) {
+                propertyToSelect = propertyResponse.data;
+              }
             }
-          }
-          // Dacă nu are proprietate specifică dar are proprietăți de interes
-          else if (result.propertiesOfInterest && result.propertiesOfInterest.length > 0) {
-            const propertyResponse = await apiService.getProperty(result.propertiesOfInterest[0]);
-            if (propertyResponse.success && propertyResponse.data) {
-              propertyToSelect = propertyResponse.data;
+            // Dacă nu are proprietate specifică dar are proprietăți de interes
+            else if (result.propertiesOfInterest && result.propertiesOfInterest.length > 0) {
+              const propertyResponse = await apiService.getProperty(result.propertiesOfInterest[0]);
+              if (propertyResponse.success && propertyResponse.data) {
+                propertyToSelect = propertyResponse.data;
+              }
             }
-          }
-          
-          // Dacă am găsit proprietatea, o selectez
-          if (propertyToSelect) {
-            selectProperty({
-              ...propertyToSelect,
-              position: propertyToSelect.coordinates || propertyToSelect.position,
-              leadData: result // Păstrez informațiile lead-ului
-            });
-          } else {
-            // Dacă nu am găsit proprietatea, creez un obiect temporar cu coordonatele
+            
+            // Dacă am găsit proprietatea, o selectez
+            if (propertyToSelect) {
+              selectProperty({
+                ...propertyToSelect,
+                position: propertyToSelect.coordinates || propertyToSelect.position,
+                leadData: result // Păstrez informațiile lead-ului
+              });
+            } else {
+              // Dacă nu am găsit proprietatea, creez un obiect temporar cu coordonatele
+              selectProperty({
+                id: `lead-${result.id}`,
+                name: result.name || result.display,
+                position: { lat: result.lat, lng: result.lng },
+                type: 'lead',
+                leadData: result
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching property for lead:', error);
+            // Fallback la obiect temporar
             selectProperty({
               id: `lead-${result.id}`,
               name: result.name || result.display,
@@ -98,37 +109,29 @@ const AppContent = () => {
               leadData: result
             });
           }
-        } catch (error) {
-          console.error('Error fetching property for lead:', error);
-          // Fallback la obiect temporar
-          selectProperty({
-            id: `lead-${result.id}`,
-            name: result.name || result.display,
-            position: { lat: result.lat, lng: result.lng },
-            type: 'lead',
-            leadData: result
-          });
         }
       } else {
         // Lead fără coordonate - merg la view-ul de leads
         setActiveView('leads');
       }
     } else if (result.type === 'property') {
-      setActiveView('map');
       if (result.lat && result.lng) {
-        // Proprietate cu coordonate - centrez harta și deschid drawer-ul
+        // Proprietate cu coordonate - centrez harta
         setMapCenter({ lat: result.lat, lng: result.lng });
-        selectProperty({
-          ...result,
-          position: { lat: result.lat, lng: result.lng }
-        });
+        
+        // Deschid drawer-ul doar dacă suntem pe view-ul de hartă
+        if (activeView === 'map') {
+          selectProperty({
+            ...result,
+            position: { lat: result.lat, lng: result.lng }
+          });
+        }
       }
     }
   };
 
   const handleCitySelect = (city) => {
     console.log('Oraș selectat:', city);
-    setActiveView('map');
     // Aici ar putea fi logica pentru a centra harta pe oraș
   };
 

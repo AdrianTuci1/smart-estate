@@ -6,7 +6,7 @@ import PropertySelector from './PropertySelector';
 import ApartmentSelector from './ApartmentSelector';
 
 const LeadDrawer = () => {
-  const { selectedLead, isLeadDrawerOpen, closeLeadDrawer } = useAppStore();
+  const { selectedLead, isLeadDrawerOpen, closeLeadDrawer, createLeadOptimistic } = useAppStore();
   const [activeTab, setActiveTab] = useState('details');
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -34,6 +34,8 @@ const LeadDrawer = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [newHistoryEntry, setNewHistoryEntry] = useState({ type: '', date: '', notes: '' });
   const [previewFile, setPreviewFile] = useState(null);
+  const [error, setError] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Check if we're in create mode (selectedLead is null but drawer is open)
   useEffect(() => {
@@ -41,6 +43,8 @@ const LeadDrawer = () => {
       // Reset to initial state when drawer opens
       setActiveTab('details');
       setPreviewFile(null);
+      setError(null);
+      setIsSaving(false);
       
       if (!selectedLead) {
         setIsCreating(true);
@@ -190,8 +194,11 @@ const LeadDrawer = () => {
 
   const handleSave = async () => {
     try {
+      setError(null);
+      setIsSaving(true);
+      
       if (isCreating) {
-        // Handle creating new lead
+        // Handle creating new lead with optimistic update
         const leadData = {
           name: formData.name,
           phone: formData.phone,
@@ -211,13 +218,12 @@ const LeadDrawer = () => {
           files: files
         };
         
-        const response = await apiService.createLead(leadData);
-        if (response.success) {
-          console.log('Lead created successfully:', response.data);
+        const result = await createLeadOptimistic(leadData);
+        if (result.success) {
+          console.log('Lead created successfully:', result.data);
           closeLeadDrawer();
         } else {
-          console.error('Error creating lead:', response.error);
-          // TODO: Show error message to user
+          setError(result.error || 'Eroare la crearea lead-ului');
         }
       } else {
         // Handle updating existing lead
@@ -243,13 +249,14 @@ const LeadDrawer = () => {
           console.log('Lead updated successfully:', response.data);
           setIsEditing(false);
         } else {
-          console.error('Error updating lead:', response.error);
-          // TODO: Show error message to user
+          setError(response.error || 'Eroare la actualizarea lead-ului');
         }
       }
     } catch (error) {
       console.error('Error saving lead:', error);
-      // TODO: Show error message to user
+      setError('Eroare la salvarea lead-ului');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -469,10 +476,19 @@ const LeadDrawer = () => {
             {isEditing || isCreating ? (
               <button
                 onClick={handleSave}
-                className="flex items-center space-x-1 px-3 py-1 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors"
+                disabled={isSaving}
+                className={`flex items-center space-x-1 px-3 py-1 text-sm rounded-lg transition-colors ${
+                  isSaving 
+                    ? 'bg-gray-400 text-white cursor-not-allowed' 
+                    : 'bg-primary-600 text-white hover:bg-primary-700'
+                }`}
               >
-                <Save className="h-4 w-4" />
-                <span>{isCreating ? 'Creează' : 'Salvează'}</span>
+                {isSaving ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                <span>{isSaving ? 'Se salvează...' : (isCreating ? 'Creează' : 'Salvează')}</span>
               </button>
             ) : (
               <div className="flex items-center space-x-2">
@@ -503,6 +519,23 @@ const LeadDrawer = () => {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto">
+            {/* Error Display */}
+            {error && (
+              <div className="p-4 bg-red-50 border-l-4 border-red-400">
+                <div className="flex">
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700">{error}</p>
+                    <button
+                      onClick={() => setError(null)}
+                      className="text-sm text-red-600 hover:text-red-800 mt-1"
+                    >
+                      Închide
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Header Section - Name and Status - only in details tab */}
             {activeTab === 'details' && (
               <div className="p-6 border-b border-gray-200">

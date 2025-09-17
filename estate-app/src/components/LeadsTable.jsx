@@ -3,111 +3,20 @@ import { Users, Phone, Building2, Plus, Eye } from 'lucide-react';
 import apiService from '../services/api';
 import useAppStore from '../stores/useAppStore';
 
-// Date mock pentru lead-uri
-const mockLeads = [
-  {
-    id: 1,
-    name: 'Maria Popescu',
-    phone: '0721 234 567',
-    email: 'maria.popescu@email.com',
-    company: 'ABC Imobiliare',
-    interest: '2 camere',
-    property: 'Complex Rezidențial Aurora',
-    propertyId: 'prop-1',
-    propertyAddress: 'Strada Aurora, nr. 15, București',
-    apartment: 'Apartament A12',
-    apartmentId: 'apt-1',
-    apartmentRooms: 2,
-    apartmentArea: 65,
-    apartmentPrice: 85000,
-    status: 'Connected',
-    lastContact: '2024-01-15',
-    notes: 'Client foarte interesat de apartamentul cu 2 camere. Urmează vizionarea.'
-  },
-  {
-    id: 2,
-    name: 'Ion Ionescu',
-    phone: '0722 345 678',
-    email: 'ion.ionescu@email.com',
-    company: 'ABC Imobiliare',
-    interest: '3 camere',
-    property: 'Complex Rezidențial Aurora',
-    propertyId: 'prop-1',
-    propertyAddress: 'Strada Aurora, nr. 15, București',
-    apartment: 'Apartament B5',
-    apartmentId: 'apt-2',
-    apartmentRooms: 3,
-    apartmentArea: 85,
-    apartmentPrice: 120000,
-    status: 'Progress',
-    lastContact: '2024-01-14',
-    notes: 'Așteaptă aprobarea creditului bancar.'
-  },
-  {
-    id: 3,
-    name: 'Ana Dumitrescu',
-    phone: '0723 456 789',
-    email: 'ana.dumitrescu@email.com',
-    company: 'XYZ Real Estate',
-    interest: '1 cameră',
-    property: 'Tower Residence',
-    propertyId: 'prop-2',
-    propertyAddress: 'Bd. Unirii, nr. 25, București',
-    apartment: 'Apartament C301',
-    apartmentId: 'apt-3',
-    apartmentRooms: 1,
-    apartmentArea: 45,
-    apartmentPrice: 55000,
-    status: 'New',
-    lastContact: '2024-01-13',
-    notes: 'Primul contact. Interesată de apartamente mici.'
-  },
-  {
-    id: 4,
-    name: 'Petru Marinescu',
-    phone: '0724 567 890',
-    email: 'petru.marinescu@email.com',
-    company: 'ABC Imobiliare',
-    interest: '4 camere',
-    property: 'Garden View Apartments',
-    propertyId: 'prop-3',
-    propertyAddress: 'Strada Grădini, nr. 8, București',
-    apartment: 'Apartament D10',
-    apartmentId: 'apt-4',
-    apartmentRooms: 4,
-    apartmentArea: 120,
-    apartmentPrice: 180000,
-    status: 'Potential',
-    lastContact: '2024-01-12',
-    notes: 'Familie cu copii, caută apartament spațios.'
-  },
-  {
-    id: 5,
-    name: 'Elena Radu',
-    phone: '0725 678 901',
-    email: 'elena.radu@email.com',
-    company: 'XYZ Real Estate',
-    interest: '2 camere',
-    property: 'Garden View Apartments',
-    propertyId: 'prop-3',
-    propertyAddress: 'Strada Grădini, nr. 8, București',
-    apartment: 'Apartament E7',
-    apartmentId: 'apt-5',
-    apartmentRooms: 2,
-    apartmentArea: 70,
-    apartmentPrice: 95000,
-    status: 'Customer',
-    lastContact: '2024-01-11',
-    notes: 'Client fidel, a cumpărat deja un apartament.'
-  }
-];
 
 const LeadsTable = ({ onLeadSelect, searchTerm = '' }) => {
-  const { selectLead, setLeadDrawerOpen } = useAppStore();
+  const { 
+    selectLead, 
+    setLeadDrawerOpen, 
+    leads, 
+    setLeads, 
+    addLead, 
+    updateLead, 
+    removeLead 
+  } = useAppStore();
   const [sortField, setSortField] = useState('name');
   const [sortDirection, setSortDirection] = useState('asc');
   const [selectedLead, setSelectedLead] = useState(null);
-  const [leads, setLeads] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -133,21 +42,23 @@ const LeadsTable = ({ onLeadSelect, searchTerm = '' }) => {
         if (response.success && response.data) {
           setLeads(response.data);
         } else {
-          // Fallback to mock data if API fails
-          setLeads(mockLeads);
+          setError('Nu s-au putut încărca lead-urile');
         }
       } catch (err) {
         console.error('Failed to load leads:', err);
         setError('Eroare la încărcarea lead-urilor');
-        // Fallback to mock data
-        setLeads(mockLeads);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadLeads();
-  }, []);
+    // Only load if we don't have leads already
+    if (leads.length === 0) {
+      loadLeads();
+    } else {
+      setIsLoading(false);
+    }
+  }, [leads.length, setLeads]);
 
   const filteredAndSortedLeads = useMemo(() => {
     let filtered = leads.filter(lead =>
@@ -193,6 +104,7 @@ const LeadsTable = ({ onLeadSelect, searchTerm = '' }) => {
   const handleCreateLead = () => {
     setLeadDrawerOpen(true);
   };
+
 
   const getSortIcon = (field) => {
     if (sortField !== field) {
@@ -317,7 +229,7 @@ const LeadsTable = ({ onLeadSelect, searchTerm = '' }) => {
                   key={lead.id}
                   className={`hover:bg-gray-50 cursor-pointer transition-colors ${
                     selectedLead?.id === lead.id ? 'bg-primary-50' : ''
-                  }`}
+                  } ${lead.isOptimistic ? 'opacity-75' : ''}`}
                   onClick={() => handleLeadClick(lead)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -353,6 +265,9 @@ const LeadsTable = ({ onLeadSelect, searchTerm = '' }) => {
                       lead.status === 'Customer' ? 'bg-emerald-100 text-emerald-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
+                      {lead.isOptimistic && (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-2"></div>
+                      )}
                       {lead.status}
                     </span>
                   </td>

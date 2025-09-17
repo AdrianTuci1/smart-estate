@@ -3,7 +3,7 @@ import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-map
 import { MapPin, Home, Construction, Eye, EyeOff, Plus, X, Users } from 'lucide-react';
 import useAppStore from '../../stores/useAppStore';
 import apiService from '../../services/api';
-import { mapStyles, mapStylesWithPOIs, mockProperties } from './mapStyles';
+import { mapStyles, mapStylesWithPOIs } from './mapStyles';
 import MapControls from './MapControls';
 import AddPropertyButton from './AddPropertyButton';
 import AddPropertyInstructions from './AddPropertyInstructions';
@@ -14,7 +14,6 @@ const PropertyMap = () => {
   const { 
     selectedProperty, 
     selectProperty, 
-    setDrawerOpen, 
     closeDrawer, 
     isDrawerOpen, 
     mapCenter, 
@@ -76,14 +75,14 @@ const PropertyMap = () => {
         
         setProperties(propertiesWithPosition);
       } else {
-        // Fallback to mock data if API fails
-        setProperties(mockProperties);
+        // No properties available
+        setProperties([]);
       }
     } catch (err) {
       console.error('Failed to load properties:', err);
       setError('Eroare la încărcarea proprietăților');
-      // Fallback to mock data
-      setProperties(mockProperties);
+      // No properties available due to error
+      setProperties([]);
     } finally {
       setIsLoading(false);
     }
@@ -145,7 +144,7 @@ const PropertyMap = () => {
   };
 
   // Use mapCenter and mapZoom from store, fallback to default if not set
-  const center = mapCenter || { lat: 46.7704, lng: 23.5918 };
+  const center = mapCenter || { lat: 44.4268, lng: 26.1025 };
   const zoom = mapZoom || 14;
 
   const onLoad = useCallback((map) => {
