@@ -1,9 +1,10 @@
 const Joi = require('joi');
 
 // Validation middleware factory
-const validate = (schema) => {
+const validate = (schema, source = 'body') => {
   return (req, res, next) => {
-    const { error } = schema.validate(req.body);
+    const dataToValidate = source === 'query' ? req.query : req.body;
+    const { error } = schema.validate(dataToValidate);
     if (error) {
       return res.status(400).json({
         success: false,
@@ -128,7 +129,20 @@ const schemas = {
 
   // Search schema
   search: Joi.object({
-    query: Joi.string().min(1).max(100).required()
+    query: Joi.string().min(2).max(200).required().custom((value, helpers) => {
+      // Trim whitespace and check if still has content
+      const trimmed = value.trim();
+      if (trimmed.length < 2) {
+        return helpers.error('string.min');
+      }
+      // Check if query has meaningful content (not just spaces or special chars)
+      const hasMeaningfulContent = /[a-zA-Z0-9\u0100-\u017F]/.test(trimmed);
+      if (!hasMeaningfulContent) {
+        return helpers.error('string.pattern.base');
+      }
+      return trimmed;
+    }),
+    view: Joi.string().valid('all', 'map', 'leads', 'users').default('all')
   }),
 
   // Pagination schema

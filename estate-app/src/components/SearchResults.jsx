@@ -37,8 +37,8 @@ const SearchResults = ({
           }
           setResults([]);
         } else {
-          // Get search suggestions
-          const response = await apiService.getSearchSuggestions(query, activeView);
+          // Get search results
+          const response = await apiService.search(query, activeView);
           if (response.success) {
             setResults(response.data);
             setRecommendations([]);
@@ -99,6 +99,22 @@ const SearchResults = ({
   const handleResultClick = (result) => {
     if (result.type === 'city') {
       onCitySelect(result);
+    } else if (result.type === 'lead' && result.coordinates) {
+      // For leads with coordinates, center the map and switch to map view
+      const resultWithCoords = {
+        ...result,
+        lat: result.coordinates.lat,
+        lng: result.coordinates.lng
+      };
+      onResultSelect(resultWithCoords);
+    } else if (result.type === 'property' && result.coordinates) {
+      // For properties with coordinates, center the map
+      const resultWithCoords = {
+        ...result,
+        lat: result.coordinates.lat,
+        lng: result.coordinates.lng
+      };
+      onResultSelect(resultWithCoords);
     } else {
       onResultSelect(result);
     }

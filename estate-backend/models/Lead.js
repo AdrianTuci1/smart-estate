@@ -111,7 +111,13 @@ class Lead {
 
     try {
       const result = await dynamoDB.query(params).promise();
-      return { success: true, data: result.Items };
+      // Filter results case-insensitively on the application side
+      const filteredResults = result.Items.filter(lead => {
+        const nameMatch = lead.name && lead.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const phoneMatch = lead.phone && lead.phone.includes(searchTerm);
+        return nameMatch || phoneMatch;
+      });
+      return { success: true, data: filteredResults };
     } catch (error) {
       return { success: false, error: error.message };
     }

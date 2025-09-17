@@ -48,7 +48,7 @@ const searchCities = (searchTerm) => {
 // @route   GET /api/search
 // @desc    Universal search without syntax - searches everything based on current view
 // @access  Private
-router.get('/', validate(schemas.search), asyncHandler(async (req, res) => {
+router.get('/', validate(schemas.search, 'query'), asyncHandler(async (req, res) => {
   const { query, view } = req.query;
 
   if (!query || query.trim().length === 0) {
@@ -67,36 +67,66 @@ router.get('/', validate(schemas.search), asyncHandler(async (req, res) => {
   };
 
   try {
-    // Determine what to search based on current view
+    // Always search in both leads and properties, regardless of view
     const currentView = view || 'all';
     
-    if (currentView === 'leads' || currentView === 'all') {
-      // Search in leads
-      const leadResult = await Lead.search(req.user.companyId, searchTerm);
-      if (leadResult.success) {
-        results.leads = leadResult.data;
-      }
+    // Search in leads
+    const leadResult = await Lead.search(req.user.companyId, searchTerm);
+    if (leadResult.success) {
+      // For each lead, get associated property coordinates if available
+      const leadsWithCoordinates = await Promise.all(
+        leadResult.data.map(async (lead) => {
+          let coordinates = null;
+          
+          // If lead has a specific property, get its coordinates
+          if (lead.propertyId) {
+            const propertyResult = await Property.getById(lead.propertyId);
+            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
+              coordinates = propertyResult.data.coordinates;
+            }
+          }
+          // If no specific property but has properties of interest, get the first one's coordinates
+          else if (lead.propertiesOfInterest && lead.propertiesOfInterest.length > 0) {
+            const propertyResult = await Property.getById(lead.propertiesOfInterest[0]);
+            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
+              coordinates = propertyResult.data.coordinates;
+            }
+          }
+          
+          return {
+            ...lead,
+            coordinates,
+            type: 'lead',
+            display: `${lead.name} (${lead.phone})`
+          };
+        })
+      );
+      
+      results.leads = leadsWithCoordinates;
     }
 
-    if (currentView === 'map' || currentView === 'all') {
-      // Search in properties
-      const propertyResult = await Property.search(req.user.companyId, searchTerm);
-      if (propertyResult.success) {
-        results.properties = propertyResult.data;
-      }
+    // Search in properties
+    const propertyResult = await Property.search(req.user.companyId, searchTerm);
+    if (propertyResult.success) {
+      results.properties = propertyResult.data.map(property => ({
+        ...property,
+        type: 'property',
+        display: property.name || property.address,
+        coordinates: property.coordinates || property.position
+      }));
+    }
 
-      // Search in popular cities (only if no properties found or search term is very specific)
-      if (results.properties.length === 0 || searchTerm.length > 4) {
-        const cityResults = searchCities(searchTerm);
-        results.cities = cityResults.map(city => ({
-          name: city.name,
-          lat: city.lat,
-          lng: city.lng,
-          population: city.population,
-          type: 'city',
-          display: city.name
-        }));
-      }
+    // Search in popular cities (only if no properties found or search term is very specific)
+    if (results.properties.length === 0 || searchTerm.length > 4) {
+      const cityResults = searchCities(searchTerm);
+      results.cities = cityResults.map(city => ({
+        name: city.name,
+        lat: city.lat,
+        lng: city.lng,
+        population: city.population,
+        type: 'city',
+        display: city.name
+      }));
     }
 
     results.total = results.leads.length + results.properties.length + results.cities.length;
@@ -200,46 +230,69 @@ router.get('/suggestions', asyncHandler(async (req, res) => {
     // If there's a query, provide filtered suggestions
     const searchTerm = q.trim();
 
-    if (currentView === 'leads' || currentView === 'all') {
-      // Get lead suggestions
-      const leadResult = await Lead.search(req.user.companyId, searchTerm);
-      if (leadResult.success && leadResult.data.length > 0) {
-        suggestions.leads = leadResult.data.slice(0, 5).map(lead => ({
-          id: lead.id,
-          name: lead.name,
-          phone: lead.phone,
-          type: 'lead',
-          display: `${lead.name} (${lead.phone})`
-        }));
-      }
+    // Always search in both leads and properties, regardless of view
+    // Get lead suggestions
+    const leadResult = await Lead.search(req.user.companyId, searchTerm);
+    if (leadResult.success && leadResult.data.length > 0) {
+      // For each lead, get associated property coordinates if available
+      const leadsWithCoordinates = await Promise.all(
+        leadResult.data.slice(0, 5).map(async (lead) => {
+          let coordinates = null;
+          
+          // If lead has a specific property, get its coordinates
+          if (lead.propertyId) {
+            const propertyResult = await Property.getById(lead.propertyId);
+            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
+              coordinates = propertyResult.data.coordinates;
+            }
+          }
+          // If no specific property but has properties of interest, get the first one's coordinates
+          else if (lead.propertiesOfInterest && lead.propertiesOfInterest.length > 0) {
+            const propertyResult = await Property.getById(lead.propertiesOfInterest[0]);
+            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
+              coordinates = propertyResult.data.coordinates;
+            }
+          }
+          
+          return {
+            id: lead.id,
+            name: lead.name,
+            phone: lead.phone,
+            type: 'lead',
+            display: `${lead.name} (${lead.phone})`,
+            coordinates
+          };
+        })
+      );
+      
+      suggestions.leads = leadsWithCoordinates;
     }
 
-    if (currentView === 'map' || currentView === 'all') {
-      // Get property suggestions
-      const propertyResult = await Property.search(req.user.companyId, searchTerm);
-      if (propertyResult.success && propertyResult.data.length > 0) {
-        suggestions.properties = propertyResult.data.slice(0, 5).map(property => ({
-          id: property.id,
-          name: property.name,
-          address: property.address,
-          status: property.status,
-          type: 'property',
-          display: property.name || property.address
-        }));
-      }
+    // Get property suggestions
+    const propertyResult = await Property.search(req.user.companyId, searchTerm);
+    if (propertyResult.success && propertyResult.data.length > 0) {
+      suggestions.properties = propertyResult.data.slice(0, 5).map(property => ({
+        id: property.id,
+        name: property.name,
+        address: property.address,
+        status: property.status,
+        type: 'property',
+        display: property.name || property.address,
+        coordinates: property.coordinates || property.position
+      }));
+    }
 
-      // Get city suggestions (only if no properties found or search term is very specific)
-      if (suggestions.properties.length === 0 || searchTerm.length > 4) {
-        const citySuggestions = searchCities(searchTerm);
-        suggestions.cities = citySuggestions.slice(0, 5).map(city => ({
-          name: city.name,
-          lat: city.lat,
-          lng: city.lng,
-          population: city.population,
-          type: 'city',
-          display: `${city.name} (${city.population} locuitori)`
-        }));
-      }
+    // Get city suggestions (only if no properties found or search term is very specific)
+    if (suggestions.properties.length === 0 || searchTerm.length > 4) {
+      const citySuggestions = searchCities(searchTerm);
+      suggestions.cities = citySuggestions.slice(0, 5).map(city => ({
+        name: city.name,
+        lat: city.lat,
+        lng: city.lng,
+        population: city.population,
+        type: 'city',
+        display: `${city.name} (${city.population} locuitori)`
+      }));
     }
 
     res.json({
@@ -269,7 +322,54 @@ router.get('/recommendations', asyncHandler(async (req, res) => {
   };
 
   try {
-    // Get popular cities
+    // Get recent leads and properties first (priority)
+    const recentLeadsResult = await Lead.getByCompany(req.user.companyId, 5);
+    if (recentLeadsResult.success) {
+      // For each lead, get associated property coordinates if available
+      const leadsWithCoordinates = await Promise.all(
+        recentLeadsResult.data.map(async (lead) => {
+          let coordinates = null;
+          
+          // If lead has a specific property, get its coordinates
+          if (lead.propertyId) {
+            const propertyResult = await Property.getById(lead.propertyId);
+            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
+              coordinates = propertyResult.data.coordinates;
+            }
+          }
+          // If no specific property but has properties of interest, get the first one's coordinates
+          else if (lead.propertiesOfInterest && lead.propertiesOfInterest.length > 0) {
+            const propertyResult = await Property.getById(lead.propertiesOfInterest[0]);
+            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
+              coordinates = propertyResult.data.coordinates;
+            }
+          }
+          
+          return {
+            type: 'lead',
+            display: `${lead.name} (${lead.phone})`,
+            id: lead.id,
+            coordinates
+          };
+        })
+      );
+      
+      recommendations.recent.push(...leadsWithCoordinates);
+    }
+
+    const allPropertiesResult = await Property.getByCompany(req.user.companyId, 5);
+    if (allPropertiesResult.success) {
+      allPropertiesResult.data.slice(0, 3).forEach(property => {
+        recommendations.recent.push({
+          type: 'property',
+          display: property.name || property.address,
+          id: property.id,
+          coordinates: property.coordinates || property.position
+        });
+      });
+    }
+
+    // Get popular cities last (lower priority)
     const popularCityRecommendations = searchCities(''); // Empty string returns top cities
     recommendations.popular = popularCityRecommendations.slice(0, 8).map(city => ({
       type: 'city',
@@ -279,29 +379,6 @@ router.get('/recommendations', asyncHandler(async (req, res) => {
       population: city.population,
       display: `${city.name} (${city.population} locuitori)`
     }));
-
-    // Get recent leads and properties
-    const recentLeadsResult = await Lead.getByCompany(req.user.companyId, 5);
-    if (recentLeadsResult.success) {
-      recentLeadsResult.data.forEach(lead => {
-        recommendations.recent.push({
-          type: 'lead',
-          display: `${lead.name} (${lead.phone})`,
-          id: lead.id
-        });
-      });
-    }
-
-    const allPropertiesResult = await Property.getByCompany(req.user.companyId, 5);
-    if (allPropertiesResult.success) {
-      allPropertiesResult.data.slice(0, 3).forEach(property => {
-        recommendations.recent.push({
-          type: 'property',
-          display: property.name || property.address,
-          id: property.id
-        });
-      });
-    }
 
     res.json({
       success: true,

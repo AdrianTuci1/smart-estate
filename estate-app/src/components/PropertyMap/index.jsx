@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
-import { MapPin, Home, Construction, Eye, EyeOff, Plus, X } from 'lucide-react';
+import { MapPin, Home, Construction, Eye, EyeOff, Plus, X, Users } from 'lucide-react';
 import useAppStore from '../../stores/useAppStore';
 import apiService from '../../services/api';
 import { mapStyles, mapStylesWithPOIs, mockProperties } from './mapStyles';
@@ -341,6 +341,7 @@ const PropertyMap = () => {
           />
         ))}
 
+
         {selectedMarker && (
           <InfoWindow
             position={selectedMarker.position}
@@ -349,7 +350,9 @@ const PropertyMap = () => {
             <div className="p-2 max-w-xs">
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
-                  {selectedMarker.status === 'finalizată' ? (
+                  {selectedMarker.leadData ? (
+                    <Users className="h-5 w-5 text-blue-600" />
+                  ) : selectedMarker.status === 'finalizată' ? (
                     <Home className="h-5 w-5 text-green-600" />
                   ) : (
                     <Construction className="h-5 w-5 text-amber-600" />
@@ -357,18 +360,32 @@ const PropertyMap = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-medium text-gray-900 truncate">
-                    {selectedMarker.name}
+                    {selectedMarker.leadData ? selectedMarker.name : selectedMarker.name}
                   </h3>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {selectedMarker.address}
-                  </p>
+                  {selectedMarker.leadData ? (
+                    <div className="text-xs text-gray-500 mt-1">
+                      <p className="text-gray-600">Proprietate: {selectedMarker.address}</p>
+                      <p className="text-gray-400">Lead asociat: {selectedMarker.leadData.name} ({selectedMarker.leadData.phone})</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {selectedMarker.address}
+                    </p>
+                  )}
                   <div className="mt-2">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedMarker.status === 'finalizată'
+                      selectedMarker.leadData
+                        ? 'bg-blue-100 text-blue-800'
+                        : selectedMarker.status === 'finalizată'
                         ? 'bg-green-100 text-green-800'
                         : 'bg-amber-100 text-amber-800'
                     }`}>
-                      {selectedMarker.status === 'finalizată' ? 'Finalizată' : 'În construcție'}
+                      {selectedMarker.leadData 
+                        ? 'Proprietate cu Lead' 
+                        : selectedMarker.status === 'finalizată' 
+                        ? 'Finalizată' 
+                        : 'În construcție'
+                      }
                     </span>
                   </div>
                 </div>
