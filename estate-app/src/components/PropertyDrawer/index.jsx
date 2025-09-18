@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react';
-import { X, Save, Edit3, FileText, Users, FileImage, Building2 } from 'lucide-react';
+import { X, Save, Edit3 } from 'lucide-react';
 import useAppStore from '../../stores/useAppStore';
 import apiService from '../../services/api';
 import PropertyDescription from './PropertyDescription';
-import PropertyLeads from './PropertyLeads';
-import PropertyFiles from './PropertyFiles';
-import PropertyApartments from './PropertyApartments';
 
 const PropertyDrawer = () => {
   const { selectedProperty, isDrawerOpen, closeDrawer } = useAppStore();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState('description');
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,14 +20,11 @@ const PropertyDrawer = () => {
   });
   const [galleryImages, setGalleryImages] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [propertyWithLeads, setPropertyWithLeads] = useState(null);
-  const [isLoadingLeads, setIsLoadingLeads] = useState(false);
 
   // Check if we're in create mode (selectedProperty is null but drawer is open)
   useEffect(() => {
     if (isDrawerOpen) {
       // Reset to initial state when drawer opens
-      setActiveTab('description');
       setCurrentImageIndex(0);
       
       if (!selectedProperty) {
@@ -74,33 +67,6 @@ const PropertyDrawer = () => {
       }
     }
   }, [isDrawerOpen, selectedProperty]);
-
-  // Fetch property with leads when leads tab is selected
-  const fetchPropertyWithLeads = async (propertyId) => {
-    if (!propertyId) return;
-    
-    setIsLoadingLeads(true);
-    try {
-      const response = await apiService.getProperty(propertyId);
-      if (response.success) {
-        setPropertyWithLeads(response.data);
-      } else {
-        console.error('Failed to fetch property with leads:', response.error);
-      }
-    } catch (error) {
-      console.error('Error fetching property with leads:', error);
-    } finally {
-      setIsLoadingLeads(false);
-    }
-  };
-
-  // Handle tab change
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    if (tab === 'leads' && selectedProperty?.id) {
-      fetchPropertyWithLeads(selectedProperty.id);
-    }
-  };
 
   if (!isDrawerOpen) return null;
 
@@ -199,7 +165,6 @@ const PropertyDrawer = () => {
       closeDrawer();
     }
     // Reset to initial state
-    setActiveTab('description');
     setCurrentImageIndex(0);
   };
 
@@ -262,87 +227,19 @@ const PropertyDrawer = () => {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {activeTab === 'description' && (
-            <PropertyDescription
-              formData={formData}
-              setFormData={setFormData}
-              isEditing={isEditing}
-              isCreating={isCreating}
-              handleInputChange={handleInputChange}
-              galleryImages={galleryImages}
-              setGalleryImages={setGalleryImages}
-              currentImageIndex={currentImageIndex}
-              setCurrentImageIndex={setCurrentImageIndex}
-              handleImageUpload={handleImageUpload}
-            />
-          )}
-
-          {activeTab === 'leads' && (
-            <PropertyLeads 
-              selectedProperty={propertyWithLeads || selectedProperty} 
-              isLoading={isLoadingLeads}
-            />
-          )}
-
-          {activeTab === 'files' && (
-            <PropertyFiles 
-              selectedProperty={selectedProperty}
-              isEditing={isEditing}
-              isCreating={isCreating}
-            />
-          )}
-
-          {activeTab === 'apartments' && (
-            <PropertyApartments 
-              selectedProperty={selectedProperty}
-              isEditing={isEditing}
-              isCreating={isCreating}
-            />
-          )}
-        </div>
-
-        {/* Tabs at bottom */}
-        <div className="flex border-t border-gray-200">
-          <button
-            onClick={() => handleTabChange('description')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${
-              activeTab === 'description'
-                ? 'text-primary-600 border-t-2 border-primary-600 bg-primary-50'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <FileText className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleTabChange('apartments')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${
-              activeTab === 'apartments'
-                ? 'text-primary-600 border-t-2 border-primary-600 bg-primary-50'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Building2 className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleTabChange('leads')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${
-              activeTab === 'leads'
-                ? 'text-primary-600 border-t-2 border-primary-600 bg-primary-50'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Users className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleTabChange('files')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors ${
-              activeTab === 'files'
-                ? 'text-primary-600 border-t-2 border-primary-600 bg-primary-50'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <FileImage className="h-4 w-4" />
-          </button>
+          <PropertyDescription
+            formData={formData}
+            setFormData={setFormData}
+            isEditing={isEditing}
+            isCreating={isCreating}
+            handleInputChange={handleInputChange}
+            galleryImages={galleryImages}
+            setGalleryImages={setGalleryImages}
+            currentImageIndex={currentImageIndex}
+            setCurrentImageIndex={setCurrentImageIndex}
+            handleImageUpload={handleImageUpload}
+            selectedProperty={selectedProperty}
+          />
         </div>
       </div>
     </div>

@@ -10,12 +10,7 @@ class Property {
     this.companyId = data.companyId;
     this.images = data.images || []; // Array of S3 URLs
     this.description = data.description || '';
-    this.roomNumber = data.roomNumber || null; // Room/apartment number
-    this.price = data.price || null;
-    this.rooms = data.rooms || null;
-    this.area = data.area || null;
     this.coordinates = data.coordinates || null; // { lat: number, lng: number }
-    this.documents = data.documents || []; // Array of document URLs and extracted data
     this.files = data.files || []; // Array of file references
     this.createdAt = data.createdAt || new Date().toISOString();
     this.updatedAt = data.updatedAt || new Date().toISOString();
@@ -191,20 +186,6 @@ class Property {
     return await this.update({ images: this.images });
   }
 
-  // Add document to property
-  async addDocument(document) {
-    if (!this.documents) {
-      this.documents = [];
-    }
-    this.documents.push(document);
-    return await this.update({ documents: this.documents });
-  }
-
-  // Remove document from property
-  async removeDocument(documentUrl) {
-    this.documents = this.documents.filter(doc => doc.url !== documentUrl);
-    return await this.update({ documents: this.documents });
-  }
 
   // Add file reference
   async addFile(fileData) {

@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const Lead = require('../models/Lead');
 const Property = require('../models/Property');
 const { authenticateToken, requireCompanyAccess } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validation');
@@ -46,10 +45,10 @@ const searchCities = (searchTerm) => {
 };
 
 // @route   GET /api/search
-// @desc    Universal search without syntax - searches everything based on current view
+// @desc    Search properties and cities
 // @access  Private
 router.get('/', validate(schemas.search, 'query'), asyncHandler(async (req, res) => {
-  const { query, view } = req.query;
+  const { query } = req.query;
 
   if (!query || query.trim().length === 0) {
     return res.status(400).json({
@@ -60,51 +59,12 @@ router.get('/', validate(schemas.search, 'query'), asyncHandler(async (req, res)
 
   const searchTerm = query.trim();
   let results = {
-    leads: [],
     properties: [],
     cities: [],
     total: 0
   };
 
   try {
-    // Always search in both leads and properties, regardless of view
-    const currentView = view || 'all';
-    
-    // Search in leads
-    const leadResult = await Lead.search(req.user.companyId, searchTerm);
-    if (leadResult.success) {
-      // For each lead, get associated property coordinates if available
-      const leadsWithCoordinates = await Promise.all(
-        leadResult.data.map(async (lead) => {
-          let coordinates = null;
-          
-          // If lead has a specific property, get its coordinates
-          if (lead.propertyId) {
-            const propertyResult = await Property.getById(lead.propertyId);
-            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
-              coordinates = propertyResult.data.coordinates;
-            }
-          }
-          // If no specific property but has properties of interest, get the first one's coordinates
-          else if (lead.propertiesOfInterest && lead.propertiesOfInterest.length > 0) {
-            const propertyResult = await Property.getById(lead.propertiesOfInterest[0]);
-            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
-              coordinates = propertyResult.data.coordinates;
-            }
-          }
-          
-          return {
-            ...lead,
-            coordinates,
-            type: 'lead',
-            display: `${lead.name} (${lead.phone})`
-          };
-        })
-      );
-      
-      results.leads = leadsWithCoordinates;
-    }
-
     // Search in properties
     const propertyResult = await Property.search(req.user.companyId, searchTerm);
     if (propertyResult.success) {
@@ -129,12 +89,11 @@ router.get('/', validate(schemas.search, 'query'), asyncHandler(async (req, res)
       }));
     }
 
-    results.total = results.leads.length + results.properties.length + results.cities.length;
+    results.total = results.properties.length + results.cities.length;
 
     // Add search metadata
     const searchMetadata = {
       query: searchTerm,
-      view: currentView,
       timestamp: new Date().toISOString(),
       companyId: req.user.companyId
     };
@@ -158,11 +117,9 @@ router.get('/', validate(schemas.search, 'query'), asyncHandler(async (req, res)
 // @desc    Get intelligent search suggestions based on existing data
 // @access  Private
 router.get('/suggestions', asyncHandler(async (req, res) => {
-  const { q, view } = req.query;
-  const currentView = view || 'all';
+  const { q } = req.query;
 
   const suggestions = {
-    leads: [],
     properties: [],
     cities: [],
     recommendations: []
@@ -171,22 +128,6 @@ router.get('/suggestions', asyncHandler(async (req, res) => {
   try {
     // If no query or very short query, return intelligent recommendations
     if (!q || q.trim().length < 2) {
-      // Get recent leads for recommendations
-      const recentLeadsResult = await Lead.getByCompany(req.user.companyId, 10);
-      if (recentLeadsResult.success) {
-        suggestions.recommendations.push({
-          type: 'recent_leads',
-          title: 'Lead-uri recente',
-          items: recentLeadsResult.data.slice(0, 5).map(lead => ({
-            id: lead.id,
-            name: lead.name,
-            phone: lead.phone,
-            type: 'lead',
-            display: `${lead.name} (${lead.phone})`
-          }))
-        });
-      }
-
       // Get popular cities for recommendations
       const cityRecommendations = searchCities(''); // Empty string returns top cities
       if (cityRecommendations.length > 0) {
@@ -229,44 +170,6 @@ router.get('/suggestions', asyncHandler(async (req, res) => {
 
     // If there's a query, provide filtered suggestions
     const searchTerm = q.trim();
-
-    // Always search in both leads and properties, regardless of view
-    // Get lead suggestions
-    const leadResult = await Lead.search(req.user.companyId, searchTerm);
-    if (leadResult.success && leadResult.data.length > 0) {
-      // For each lead, get associated property coordinates if available
-      const leadsWithCoordinates = await Promise.all(
-        leadResult.data.slice(0, 5).map(async (lead) => {
-          let coordinates = null;
-          
-          // If lead has a specific property, get its coordinates
-          if (lead.propertyId) {
-            const propertyResult = await Property.getById(lead.propertyId);
-            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
-              coordinates = propertyResult.data.coordinates;
-            }
-          }
-          // If no specific property but has properties of interest, get the first one's coordinates
-          else if (lead.propertiesOfInterest && lead.propertiesOfInterest.length > 0) {
-            const propertyResult = await Property.getById(lead.propertiesOfInterest[0]);
-            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
-              coordinates = propertyResult.data.coordinates;
-            }
-          }
-          
-          return {
-            id: lead.id,
-            name: lead.name,
-            phone: lead.phone,
-            type: 'lead',
-            display: `${lead.name} (${lead.phone})`,
-            coordinates
-          };
-        })
-      );
-      
-      suggestions.leads = leadsWithCoordinates;
-    }
 
     // Get property suggestions
     const propertyResult = await Property.search(req.user.companyId, searchTerm);
@@ -313,53 +216,16 @@ router.get('/suggestions', asyncHandler(async (req, res) => {
 // @desc    Get intelligent recommendations based on company data
 // @access  Private
 router.get('/recommendations', asyncHandler(async (req, res) => {
-  const { view } = req.query;
-  const currentView = view || 'all';
-
   const recommendations = {
     popular: [],
     recent: []
   };
 
   try {
-    // Get recent leads and properties first (priority)
-    const recentLeadsResult = await Lead.getByCompany(req.user.companyId, 5);
-    if (recentLeadsResult.success) {
-      // For each lead, get associated property coordinates if available
-      const leadsWithCoordinates = await Promise.all(
-        recentLeadsResult.data.map(async (lead) => {
-          let coordinates = null;
-          
-          // If lead has a specific property, get its coordinates
-          if (lead.propertyId) {
-            const propertyResult = await Property.getById(lead.propertyId);
-            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
-              coordinates = propertyResult.data.coordinates;
-            }
-          }
-          // If no specific property but has properties of interest, get the first one's coordinates
-          else if (lead.propertiesOfInterest && lead.propertiesOfInterest.length > 0) {
-            const propertyResult = await Property.getById(lead.propertiesOfInterest[0]);
-            if (propertyResult.success && propertyResult.data && propertyResult.data.coordinates) {
-              coordinates = propertyResult.data.coordinates;
-            }
-          }
-          
-          return {
-            type: 'lead',
-            display: `${lead.name} (${lead.phone})`,
-            id: lead.id,
-            coordinates
-          };
-        })
-      );
-      
-      recommendations.recent.push(...leadsWithCoordinates);
-    }
-
+    // Get recent properties first (priority)
     const allPropertiesResult = await Property.getByCompany(req.user.companyId, 5);
     if (allPropertiesResult.success) {
-      allPropertiesResult.data.slice(0, 3).forEach(property => {
+      allPropertiesResult.data.forEach(property => {
         recommendations.recent.push({
           type: 'property',
           display: property.name || property.address,

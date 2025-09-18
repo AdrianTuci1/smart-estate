@@ -1,4 +1,6 @@
-import { MapPin, Home, Construction, ChevronLeft, ChevronRight, FileImage, Upload } from 'lucide-react';
+import { MapPin, Home, Construction, ChevronLeft, ChevronRight, FileImage, Upload, Folder, File, Download, Trash2, ExternalLink, ChevronRight as ChevronRightIcon, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import apiService from '../../services/api';
 
 const PropertyDescription = ({ 
   formData, 
@@ -10,8 +12,114 @@ const PropertyDescription = ({
   setGalleryImages, 
   currentImageIndex, 
   setCurrentImageIndex,
-  handleImageUpload 
+  handleImageUpload,
+  selectedProperty 
 }) => {
+  // Filesystem state
+  const [files, setFiles] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  // Load files from property data
+  useEffect(() => {
+    if (selectedProperty && selectedProperty.files) {
+      const propertyFiles = selectedProperty.files.map(file => ({
+        id: file.id,
+        name: file.name,
+        size: file.size,
+        type: file.type || 'file',
+        url: file.url,
+        s3Key: file.s3Key,
+        createdAt: file.createdAt
+      }));
+      setFiles(propertyFiles);
+    } else {
+      setFiles([]);
+    }
+  }, [selectedProperty]);
+
+  // Filesystem functions
+  const handleFileUpload = async (event) => {
+    const uploadedFiles = Array.from(event.target.files);
+    if (!selectedProperty?.id) return;
+    
+    setIsLoading(true);
+    try {
+      for (const file of uploadedFiles) {
+        const response = await apiService.uploadPropertyFile(selectedProperty.id, file);
+        if (response.success) {
+          console.log('File uploaded successfully:', response.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      alert('Eroare la încărcarea fișierelor');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFileDoubleClick = (file) => {
+    if (file.url) {
+      window.open(file.url, '_blank');
+    }
+  };
+
+  const handleDownloadFile = async (file) => {
+    if (file.url) {
+      const link = document.createElement('a');
+      link.href = file.url;
+      link.download = file.name;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handleDeleteFile = async (file) => {
+    if (!selectedProperty?.id || !file.id) return;
+    
+    if (confirm(`Sigur doriți să ștergeți fișierul "${file.name}"?`)) {
+      setIsLoading(true);
+      try {
+        const response = await apiService.deletePropertyFile(selectedProperty.id, file.id);
+        if (response.success) {
+          console.log('File deleted successfully');
+          setFiles(prev => prev.filter(f => f.id !== file.id));
+        }
+      } catch (error) {
+        console.error('Error deleting file:', error);
+        alert('Eroare la ștergerea fișierului');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleItemSelect = (item) => {
+    setSelectedItems(prev => 
+      prev.includes(item.id) 
+        ? prev.filter(id => id !== item.id)
+        : [...prev, item.id]
+    );
+  };
+
+  const getFileIcon = (type) => {
+    switch (type) {
+      case 'pdf':
+        return '📄';
+      case 'dwg':
+        return '📐';
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return '🖼️';
+      default:
+        return '📄';
+    }
+  };
+
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % galleryImages.length);
   };
@@ -215,6 +323,139 @@ const PropertyDescription = ({
           </div>
         </div>
       </div>
+
+      {/* Filesystem Section */}
+      {!isCreating && selectedProperty && (
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <Folder className="h-5 w-5 text-primary-600" />
+              <h3 className="font-medium text-gray-900">Fișiere</h3>
+            </div>
+            
+            <label className="flex items-center space-x-1 px-3 py-1 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors cursor-pointer">
+              <Upload className="h-4 w-4" />
+              <span>Încarcă fișiere</span>
+              <input
+                type="file"
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {/* Files List */}
+          <div className="max-h-64 overflow-y-auto">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-20">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+              </div>
+            ) : files.length > 0 ? (
+              <div className="space-y-1">
+                {files.map((file) => (
+                  <div
+                    key={file.id}
+                    className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedItems.includes(file.id) 
+                        ? 'bg-primary-50 border border-primary-200' 
+                        : 'hover:bg-gray-50'
+                    }`}
+                    onClick={() => handleItemSelect(file)}
+                    onDoubleClick={() => handleFileDoubleClick(file)}
+                  >
+                    <span className="text-lg">{getFileIcon(file.type)}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {file.size} • {new Date(file.createdAt).toLocaleDateString('ro-RO')}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFileDoubleClick(file);
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        title="Deschide în calculator"
+                      >
+                        <ExternalLink className="h-4 w-4 text-blue-500" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadFile(file);
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        title="Descarcă"
+                      >
+                        <Download className="h-4 w-4 text-gray-500" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteFile(file);
+                        }}
+                        className="p-1 hover:bg-red-100 rounded transition-colors"
+                        title="Șterge"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Folder className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">Nu există fișiere</p>
+                <p className="text-xs text-gray-400">
+                  Încărcați fișiere pentru a le organiza aici
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Selected items actions */}
+          {selectedItems.length > 0 && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">
+                  {selectedItems.length} fișier(e) selectat(e)
+                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      const selectedFiles = files.filter(file => selectedItems.includes(file.id));
+                      selectedFiles.forEach(file => handleDownloadFile(file));
+                    }}
+                    className="flex items-center space-x-1 px-3 py-1 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Descarcă</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Sigur doriți să ștergeți ${selectedItems.length} fișiere?`)) {
+                        const selectedFiles = files.filter(file => selectedItems.includes(file.id));
+                        selectedFiles.forEach(file => handleDeleteFile(file));
+                        setSelectedItems([]);
+                      }
+                    }}
+                    className="flex items-center space-x-1 px-3 py-1 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Șterge</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Description */}
       <div className="p-6 border-b border-gray-200">

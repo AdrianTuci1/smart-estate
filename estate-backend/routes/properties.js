@@ -1,10 +1,8 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 const Property = require('../models/Property');
-const Lead = require('../models/Lead');
 const { authenticateToken, requireCompanyAccess } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -352,116 +350,6 @@ router.delete('/:id/images/:imageUrl', asyncHandler(async (req, res) => {
   });
 }));
 
-// @route   POST /api/properties/:id/documents
-// @desc    Upload document for property and extract data
-// @access  Private
-router.post('/:id/documents', upload.single('file'), asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  if (!req.file) {
-    return res.status(400).json({
-      success: false,
-      error: 'No file uploaded'
-    });
-  }
-
-  // First, get the property to check ownership
-  const getResult = await Property.getById(id);
-  
-  if (!getResult.success || !getResult.data) {
-    return res.status(404).json({
-      success: false,
-      error: 'Property not found'
-    });
-  }
-
-  if (getResult.data.companyId !== req.user.companyId) {
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied'
-    });
-  }
-
-  try {
-    // Upload file to S3
-    const fileExtension = req.file.originalname.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
-    const s3Key = `properties/${id}/documents/${fileName}`;
-    
-    const uploadResult = await s3Utils.uploadFile(req.file.buffer, s3Key, req.file.mimetype);
-    
-    if (!uploadResult.success) {
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to upload file to storage'
-      });
-    }
-
-    // Extract data using AWS Textract
-    let extractedData = {
-      area: null,
-      rooms: null,
-      price: null,
-      apartmentNumber: null,
-      notes: 'Document încărcat cu succes.'
-    };
-
-    try {
-      const textractResult = await textractUtils.extractTextFromDocument(
-        S3_CONFIG.BUCKET_NAME, 
-        s3Key
-      );
-      
-      if (textractResult.success) {
-        extractedData = textractResult.data.apartmentData;
-        console.log('Textract extraction successful:', extractedData);
-      } else {
-        console.log('Textract extraction failed:', textractResult.error);
-        extractedData.notes = 'Document încărcat cu succes, dar extragerea automată a datelor a eșuat.';
-      }
-    } catch (textractError) {
-      console.error('Textract processing error:', textractError);
-      extractedData.notes = 'Document încărcat cu succes, dar extragerea automată a datelor a eșuat.';
-    }
-
-    // Create document object
-    const document = {
-      url: uploadResult.data.url,
-      name: req.file.originalname,
-      type: req.file.mimetype,
-      size: req.file.size,
-      uploadedAt: new Date().toISOString(),
-      extractedData: extractedData
-    };
-
-    // Add document to property
-    const property = new Property(getResult.data);
-    const updateResult = await property.addDocument(document);
-    
-    if (!updateResult.success) {
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to save document metadata'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        document: document,
-        fileUrl: uploadResult.data.url,
-        extractedData: extractedData
-      }
-    });
-
-  } catch (error) {
-    console.error('Document upload error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to process document upload'
-    });
-  }
-}));
 
 // @route   POST /api/properties/:id/files/upload
 // @desc    Upload file for property to S3

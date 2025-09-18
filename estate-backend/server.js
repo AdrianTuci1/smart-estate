@@ -10,7 +10,6 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth');
 const propertyRoutes = require('./routes/properties');
 const apartmentRoutes = require('./routes/apartments');
-const leadRoutes = require('./routes/leads');
 const searchRoutes = require('./routes/search');
 const companyRoutes = require('./routes/companies');
 const userRoutes = require('./routes/users');
@@ -60,7 +59,6 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/apartments', apartmentRoutes);
-app.use('/api/leads', leadRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/users', userRoutes);
@@ -75,7 +73,6 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       properties: '/api/properties',
       apartments: '/api/apartments',
-      leads: '/api/leads',
       search: '/api/search',
       companies: '/api/companies',
       users: '/api/users',

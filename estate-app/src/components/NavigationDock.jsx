@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Map, Users, Search, X, LogOut, ChevronDown, UserCog } from 'lucide-react';
+import { Map, Users, Search, X, LogOut, ChevronDown, UserCog, Building2 } from 'lucide-react';
 import SearchResults from './SearchResults';
 import useAppStore from '../stores/useAppStore';
 import useSearchStore from '../stores/useSearchStore';
@@ -88,12 +88,7 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
   };
 
   const getSearchPlaceholder = () => {
-    if (searchQuery.startsWith('@pers')) {
-      return 'Căutați persoane...';
-    } else if (searchQuery.startsWith('@loc')) {
-      return 'Căutați locații...';
-    }
-    return 'Căutare';
+    return 'Căutați proprietăți...';
   };
 
   return (
@@ -115,14 +110,14 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
           </button>
           
           <button
-            onClick={() => setActiveView('leads')}
+            onClick={() => setActiveView('properties')}
             className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
-              activeView === 'leads'
+              activeView === 'properties'
                 ? 'bg-primary-600 text-white shadow-lg'
                 : 'bg-white/80 text-gray-600 hover:bg-white hover:text-gray-900'
             }`}
           >
-            <Users className="h-5 w-5" />
+            <Building2 className="h-5 w-5" />
           </button>
           
           {user?.role === 'admin' && (

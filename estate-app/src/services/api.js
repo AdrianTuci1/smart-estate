@@ -139,12 +139,6 @@ class ApiService {
     });
   }
 
-  // Apartment document analysis
-  async analyzeApartmentDocument(apartmentId) {
-    return this.request(`/api/apartments/${apartmentId}/analyze`, {
-      method: 'POST',
-    });
-  }
 
   // Apartments methods
   async getApartments(params = {}) {
@@ -215,131 +209,20 @@ class ApiService {
     return data;
   }
 
-  // Leads methods
-  async getLeads(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `/api/leads?${queryString}` : '/api/leads';
-    return this.request(endpoint);
-  }
-
-  async getLead(id) {
-    return this.request(`/api/leads/${id}`);
-  }
-
-  async createLead(leadData) {
-    return this.request('/api/leads', {
-      method: 'POST',
-      body: JSON.stringify(leadData),
-    });
-  }
-
-  async updateLead(id, leadData) {
-    return this.request(`/api/leads/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(leadData),
-    });
-  }
-
-  async deleteLead(id) {
-    return this.request(`/api/leads/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // Lead history methods
-  async addLeadHistory(leadId, historyData) {
-    return this.request(`/api/leads/${leadId}/history`, {
-      method: 'POST',
-      body: JSON.stringify(historyData),
-    });
-  }
-
-  async updateLeadHistory(leadId, entryId, updateData) {
-    return this.request(`/api/leads/${leadId}/history/${entryId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updateData),
-    });
-  }
-
-  async deleteLeadHistory(leadId, entryId) {
-    return this.request(`/api/leads/${leadId}/history/${entryId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // Lead file methods
-  async addLeadFile(leadId, fileData) {
-    return this.request(`/api/leads/${leadId}/files`, {
-      method: 'POST',
-      body: JSON.stringify(fileData),
-    });
-  }
-
-  async deleteLeadFile(leadId, fileId) {
-    return this.request(`/api/leads/${leadId}/files/${fileId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async uploadLeadFile(leadId, file) {
-    const token = localStorage.getItem('authToken');
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await fetch(`${this.baseURL}/api/leads/${leadId}/files/upload`, {
-      method: 'POST',
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
-    }
-
-    return data;
-  }
-
-  async getPresignedUploadUrl(leadId, fileName, contentType) {
-    return this.request(`/api/leads/${leadId}/files/presigned-url`, {
-      method: 'POST',
-      body: JSON.stringify({ fileName, contentType }),
-    });
-  }
-
-  async uploadFileToS3(presignedUrl, file) {
-    const response = await fetch(presignedUrl, {
-      method: 'PUT',
-      body: file,
-      headers: {
-        'Content-Type': file.type,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`S3 upload failed: ${response.status}`);
-    }
-
-    return response;
-  }
 
   // Search methods
-  async search(query, view = 'all') {
-    return this.request(`/api/search?query=${encodeURIComponent(query)}&view=${view}`);
+  async search(query) {
+    return this.request(`/api/search?query=${encodeURIComponent(query)}`);
   }
 
-  async getSearchSuggestions(query = '', view = 'all') {
+  async getSearchSuggestions(query = '') {
     const params = new URLSearchParams();
     if (query) params.append('q', query);
-    params.append('view', view);
     return this.request(`/api/search/suggestions?${params.toString()}`);
   }
 
-  async getSearchRecommendations(view = 'all') {
-    return this.request(`/api/search/recommendations?view=${view}`);
+  async getSearchRecommendations() {
+    return this.request(`/api/search/recommendations`);
   }
 
   // Company methods
