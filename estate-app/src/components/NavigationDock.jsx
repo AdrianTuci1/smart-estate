@@ -102,8 +102,8 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
             onClick={() => setActiveView('map')}
             className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
               activeView === 'map'
-                ? 'bg-primary-600 text-white shadow-lg'
-                : 'bg-white/80 text-gray-600 hover:bg-white hover:text-gray-900'
+                ? 'bg-primary text-primary-foreground shadow-lg'
+                : 'bg-white/80 text-muted-foreground hover:bg-white hover:text-foreground'
             }`}
           >
             <Map className="h-5 w-5" />
@@ -113,8 +113,8 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
             onClick={() => setActiveView('properties')}
             className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
               activeView === 'properties'
-                ? 'bg-primary-600 text-white shadow-lg'
-                : 'bg-white/80 text-gray-600 hover:bg-white hover:text-gray-900'
+                ? 'bg-primary text-primary-foreground shadow-lg'
+                : 'bg-white/80 text-muted-foreground hover:bg-white hover:text-foreground'
             }`}
           >
             <Building2 className="h-5 w-5" />
@@ -125,8 +125,8 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
               onClick={() => setActiveView('users')}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
                 activeView === 'users'
-                  ? 'bg-primary-600 text-white shadow-lg'
-                  : 'bg-white/80 text-gray-600 hover:bg-white hover:text-gray-900'
+                  ? 'bg-primary text-primary-foreground shadow-lg'
+                  : 'bg-white/80 text-muted-foreground hover:bg-white hover:text-foreground'
               }`}
               title="Gestionare Utilizatori"
             >
@@ -139,7 +139,7 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
         <div className="flex-1 max-w-md">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+              <Search className="h-5 w-5 text-muted-foreground" />
             </div>
             <input
               ref={searchInputRef}
@@ -149,8 +149,8 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
               placeholder={getSearchPlaceholder()}
-              className={`w-full pl-10 pr-10 py-2 bg-white/80 border border-gray-200 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 ${
-                isSearchFocused ? 'bg-white shadow-lg' : ''
+              className={`w-full pl-10 pr-10 py-2 bg-background/80 border border-border rounded-lg text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200 ${
+                isSearchFocused ? 'bg-background shadow-lg' : ''
               }`}
             />
             {searchQuery && (
@@ -158,7 +158,7 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
                 onClick={handleClearSearch}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center"
               >
-                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
               </button>
             )}
           </div>
@@ -179,14 +179,14 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
         <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center space-x-2 p-2 hover:bg-white/80 rounded-lg transition-colors"
+            className="flex items-center space-x-2 p-2 hover:bg-accent rounded-lg transition-colors"
           >
-            <div className="h-8 w-8 bg-primary-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-medium">
+            <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center">
+              <span className="text-primary-foreground text-sm font-medium">
                 {user.username.charAt(0).toUpperCase()}
               </span>
             </div>
-            <ChevronDown className="h-4 w-4 text-gray-500" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </button>
 
           {/* User Menu */}
@@ -196,14 +196,14 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
                 className="fixed inset-0 z-40"
                 onClick={() => setShowUserMenu(false)}
               />
-              <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-lg border border-gray-200 py-2 min-w-48 z-50">
-                <div className="px-4 py-2 border-b border-gray-200">
-                  <p className="text-sm font-medium text-gray-900">{user.username}</p>
-                  <p className="text-xs text-gray-500">{user.companyAlias}</p>
+              <div className="absolute bottom-full right-0 mb-2 bg-popover rounded-lg shadow-lg border border-border py-2 min-w-48 z-50">
+                <div className="px-4 py-2 border-b border-border">
+                  <p className="text-sm font-medium text-popover-foreground">{user.username}</p>
+                  <p className="text-xs text-muted-foreground">{user.companyAlias}</p>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Deconectare</span>

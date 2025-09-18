@@ -4,7 +4,7 @@ import useAppStore from '../../stores/useAppStore';
 import apiService from '../../services/api';
 import PropertyDescription from './PropertyDescription';
 
-const PropertyDrawer = () => {
+const PropertyDrawer = ({ onFileClick, onGalleryOpen }) => {
   const { selectedProperty, isDrawerOpen, closeDrawer } = useAppStore();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
@@ -182,7 +182,7 @@ const PropertyDrawer = () => {
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-96 bg-white/95 backdrop-blur-sm shadow-drawer transform transition-all duration-300 ease-in-out translate-x-0">
+    <div className="absolute inset-y-0 right-0 z-50 w-96 bg-white/95 backdrop-blur-sm shadow-drawer transform transition-all duration-300 ease-in-out translate-x-0">
       <div className="flex flex-col h-full">
         {/* Header with Close and Edit buttons */}
         <div className={`flex items-center p-4 border-b border-gray-200 ${
@@ -239,9 +239,12 @@ const PropertyDrawer = () => {
             setCurrentImageIndex={setCurrentImageIndex}
             handleImageUpload={handleImageUpload}
             selectedProperty={selectedProperty}
+            onFileClick={onFileClick}
+            onGalleryOpen={onGalleryOpen}
           />
         </div>
       </div>
+
     </div>
   );
 };

@@ -8,6 +8,7 @@ import UserManagement from './components/UserManagement';
 import NavigationDock from './components/NavigationDock';
 import PropertyMap from './components/PropertyMap';
 import PropertyDrawer from './components/PropertyDrawer';
+import PropertyFileViewer from './components/PropertyFileViewer';
 import PropertiesList from './components/PropertiesList';
 
 const AppContent = () => {
@@ -16,10 +17,15 @@ const AppContent = () => {
     activeView, 
     setActiveView, 
     selectProperty, 
-    setMapCenter
+    setMapCenter,
+    selectedProperty
   } = useAppStore();
   const { searchQuery } = useSearchStore();
   const [showCompanySetup, setShowCompanySetup] = useState(false);
+  const [isFileViewerOpen, setIsFileViewerOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedGalleryImages, setSelectedGalleryImages] = useState([]);
+  const [viewerType, setViewerType] = useState('files'); // 'files' or 'gallery'
 
   const handleLogin = (userData) => {
     login(userData);
@@ -92,7 +98,37 @@ const AppContent = () => {
         )}
 
         {/* Property Drawer */}
-        <PropertyDrawer />
+        <PropertyDrawer 
+          onFileClick={(file) => {
+            setSelectedFile(file);
+            setSelectedGalleryImages([]);
+            setViewerType('files');
+            setIsFileViewerOpen(true);
+          }}
+          onGalleryOpen={(images) => {
+            setSelectedGalleryImages(images);
+            setSelectedFile(null);
+            setViewerType('gallery');
+            setIsFileViewerOpen(true);
+          }}
+        />
+
+        {/* File Viewer */}
+        <PropertyFileViewer
+          selectedProperty={selectedProperty}
+          isOpen={isFileViewerOpen}
+          onClose={() => {
+            setIsFileViewerOpen(false);
+            setSelectedFile(null);
+            setSelectedGalleryImages([]);
+          }}
+          selectedItems={viewerType === 'files' ? (selectedFile ? [selectedFile] : []) : selectedGalleryImages}
+          type={viewerType}
+          onItemUpdate={(updatedData) => {
+            // Handle file updates if needed
+            console.log('Items updated:', updatedData);
+          }}
+        />
       </main>
 
       {/* Navigation Dock */}

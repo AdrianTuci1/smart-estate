@@ -17,8 +17,7 @@ const textract = new AWS.Textract({
 // S3 Configuration
 const S3_CONFIG = {
   BUCKET_NAME: process.env.S3_BUCKET_NAME || 'estate-app-files',
-  REGION: process.env.AWS_REGION || 'us-east-1',
-  CLOUDFRONT_DOMAIN: process.env.CLOUDFRONT_DOMAIN || null
+  REGION: process.env.AWS_REGION || 'us-east-1'
 };
 
 // S3 Utility functions
@@ -29,17 +28,15 @@ const s3Utils = {
       Bucket: S3_CONFIG.BUCKET_NAME,
       Key: key,
       Body: file,
-      ContentType: contentType,
-      ACL: 'public-read' // Make files publicly accessible
+      ContentType: contentType
+      // ACL removed - using bucket policy instead for public access
     };
 
     try {
       const result = await s3.upload(params).promise();
       return {
         success: true,
-        url: S3_CONFIG.CLOUDFRONT_DOMAIN 
-          ? `https://${S3_CONFIG.CLOUDFRONT_DOMAIN}/${key}`
-          : result.Location,
+        url: result.Location,
         key: key
       };
     } catch (error) {
@@ -106,9 +103,7 @@ const s3Utils = {
         success: true,
         files: result.Contents.map(item => ({
           key: item.Key,
-          url: S3_CONFIG.CLOUDFRONT_DOMAIN 
-            ? `https://${S3_CONFIG.CLOUDFRONT_DOMAIN}/${item.Key}`
-            : `https://${S3_CONFIG.BUCKET_NAME}.s3.${S3_CONFIG.REGION}.amazonaws.com/${item.Key}`,
+          url: `https://${S3_CONFIG.BUCKET_NAME}.s3.${S3_CONFIG.REGION}.amazonaws.com/${item.Key}`,
           size: item.Size,
           lastModified: item.LastModified
         }))

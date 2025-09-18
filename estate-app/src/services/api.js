@@ -139,6 +139,83 @@ class ApiService {
     });
   }
 
+  // Property file download and view methods
+  async getFileDownloadUrl(propertyId, fileId) {
+    return this.request(`/api/properties/${propertyId}/files/${fileId}/download`);
+  }
+
+  async getFileViewUrl(propertyId, fileId) {
+    return this.request(`/api/properties/${propertyId}/files/${fileId}/view`);
+  }
+
+  // Property image methods
+  async uploadPropertyImage(propertyId, imageFile) {
+    const token = localStorage.getItem('authToken');
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    
+    const response = await fetch(`${this.baseURL}/api/properties/${propertyId}/images/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  }
+
+  async addPropertyImageUrl(propertyId, imageUrl) {
+    return this.request(`/api/properties/${propertyId}/images`, {
+      method: 'POST',
+      body: JSON.stringify({ imageUrl }),
+    });
+  }
+
+  async removePropertyImage(propertyId, imageUrl) {
+    const encodedImageUrl = encodeURIComponent(imageUrl);
+    return this.request(`/api/properties/${propertyId}/images/${encodedImageUrl}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Property gallery methods
+  async getPropertyGallery(propertyId) {
+    return this.request(`/api/properties/${propertyId}/gallery`);
+  }
+
+  async uploadPropertyGalleryImages(propertyId, imageFiles) {
+    const token = localStorage.getItem('authToken');
+    const formData = new FormData();
+    
+    // Add all images to FormData
+    imageFiles.forEach((file, index) => {
+      formData.append('images', file);
+    });
+    
+    const response = await fetch(`${this.baseURL}/api/properties/${propertyId}/gallery/bulk-upload`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  }
+
 
   // Apartments methods
   async getApartments(params = {}) {
@@ -190,24 +267,6 @@ class ApiService {
     return data;
   }
 
-  async uploadApartmentDocument(formData) {
-    const token = localStorage.getItem('authToken');
-    const response = await fetch(`${this.baseURL}/api/apartments/${formData.get('apartmentId')}/documents`, {
-      method: 'POST',
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: formData,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
-    }
-
-    return data;
-  }
 
 
   // Search methods
