@@ -4,7 +4,6 @@ import PropertyGallery from '../PropertyGallery';
 
 const PropertyDescription = ({ 
   formData, 
-  setFormData, 
   isEditing, 
   isCreating, 
   handleInputChange, 

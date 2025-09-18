@@ -1,13 +1,27 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Upload, Download, Trash2, ExternalLink, File, Folder, FolderOpen } from 'lucide-react';
 import { TreeView } from './ui/tree-view';
 import apiService from '../services/api';
 import { handleFileAction, getFileIcon, getFileAction } from '../utils/fileHandler';
+import useFileViewerStore from '../stores/useFileViewerStore';
 
 const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
+  const { setAllFiles } = useFileViewerStore();
   const [files, setFiles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedIds, setExpandedIds] = useState(['root', 'documents', 'images', 'plans']);
+
+  // Handle node expansion with proper hook order
+  const handleNodeExpand = useCallback((nodeId, isExpanded) => {
+    // Use setTimeout to defer state update to avoid setState during render
+    setTimeout(() => {
+      setExpandedIds(prev => 
+        isExpanded 
+          ? [...prev, nodeId]
+          : prev.filter(id => id !== nodeId)
+      );
+    }, 0);
+  }, []);
 
   // Load property files function
   const loadPropertyFiles = async () => {
@@ -27,6 +41,7 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
             createdAt: file.createdAt
           }));
           setFiles(propertyFiles);
+          setAllFiles(propertyFiles); // Update global store
         } else {
           // Load complete property data to get files
           const response = await apiService.getProperty(selectedProperty.id);
@@ -41,6 +56,7 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
               createdAt: file.createdAt
             }));
             setFiles(propertyFiles);
+            setAllFiles(propertyFiles); // Update global store
           } else {
             setFiles([]);
           }
@@ -310,13 +326,7 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
                 }
               }
             }}
-            onNodeExpand={(nodeId, isExpanded) => {
-              setExpandedIds(prev => 
-                isExpanded 
-                  ? [...prev, nodeId]
-                  : prev.filter(id => id !== nodeId)
-              );
-            }}
+            onNodeExpand={handleNodeExpand}
             showLines={true}
             showIcons={true}
             className="border-0 bg-transparent"

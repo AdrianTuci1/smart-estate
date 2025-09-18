@@ -11,8 +11,14 @@ const PropertyFileViewer = () => {
   const { 
     isOpen, 
     viewerType, 
+    selectedFile,
+    selectedGalleryImages,
     closeFileViewer,
-    getCurrentItems 
+    getCurrentItems,
+    setAllFiles,
+    setAllGalleryImages,
+    updateItemsAfterDeletion,
+    updateGalleryImages
   } = useFileViewerStore();
   
   const [items, setItems] = useState([]);
@@ -33,7 +39,7 @@ const PropertyFileViewer = () => {
         loadPropertyItems();
       }
     }
-  }, [isOpen, selectedProperty?.id, getCurrentItems]);
+  }, [isOpen, selectedProperty?.id, selectedFile, selectedGalleryImages, viewerType]);
 
   // Load view URL when item changes
   useEffect(() => {
@@ -49,14 +55,18 @@ const PropertyFileViewer = () => {
         // Load gallery images
         const response = await apiService.getPropertyGallery(selectedProperty.id);
         if (response.success && response.data.images) {
-          setItems(response.data.images);
+          const images = response.data.images;
+          setItems(images);
+          setAllGalleryImages(images); // Store in global state
           setCurrentItemIndex(0);
         }
       } else {
         // Load files
         const response = await apiService.getProperty(selectedProperty.id);
         if (response.success && response.data.files) {
-          setItems(response.data.files);
+          const files = response.data.files;
+          setItems(files);
+          setAllFiles(files); // Store in global state
           setCurrentItemIndex(0);
         }
       }
@@ -195,46 +205,57 @@ const PropertyFileViewer = () => {
     
     if (!confirm(`Sigur doriți să ștergeți ${itemName}?`)) return;
     
+    // Store original state for rollback
+    const originalItems = [...items];
+    const originalIndex = currentItemIndex;
+    
     try {
       setIsLoading(true);
       
-      if (viewerType === 'gallery') {
-        // Delete gallery image
-        const response = await apiService.removePropertyImage(selectedProperty.id, currentItem.url);
-        if (response.success) {
-          // Remove item from local state
-          const newItems = items.filter((_, index) => index !== currentItemIndex);
-          setItems(newItems);
-          
-          // Adjust current index if needed
-          if (currentItemIndex >= newItems.length) {
-            setCurrentItemIndex(Math.max(0, newItems.length - 1));
-          }
-          
-          // If no items left, close viewer
-          if (newItems.length === 0) {
-            closeFileViewer();
-          }
-        }
-      } else {
-        // Delete file
-        const response = await apiService.deletePropertyFile(selectedProperty.id, currentItem.id);
-        if (response.success) {
-          // Remove item from local state
-          const newItems = items.filter((_, index) => index !== currentItemIndex);
-          setItems(newItems);
-          
-          // Adjust current index if needed
-          if (currentItemIndex >= newItems.length) {
-            setCurrentItemIndex(Math.max(0, newItems.length - 1));
-          }
-          
-          // If no items left, close viewer
-          if (newItems.length === 0) {
-            closeFileViewer();
-          }
-        }
+      // Optimistic update - remove item immediately from UI
+      const newItems = items.filter((_, index) => index !== currentItemIndex);
+      setItems(newItems);
+      
+      // Update global state optimistically
+      updateItemsAfterDeletion(currentItemIndex, viewerType);
+      
+      // Adjust current index if needed
+      let newIndex = currentItemIndex;
+      if (currentItemIndex >= newItems.length) {
+        newIndex = Math.max(0, newItems.length - 1);
+        setCurrentItemIndex(newIndex);
       }
+      
+      // Perform actual deletion
+      let response;
+      if (viewerType === 'gallery') {
+        // Use originalUrl if available (for gallery images), otherwise use url
+        const imageUrl = currentItem.originalUrl || currentItem.url;
+        response = await apiService.removePropertyImage(selectedProperty.id, imageUrl);
+      } else {
+        response = await apiService.deletePropertyFile(selectedProperty.id, currentItem.id);
+      }
+      
+      if (!response.success) {
+        // Rollback on failure
+        setItems(originalItems);
+        setCurrentItemIndex(originalIndex);
+        
+        // Rollback global state
+        if (viewerType === 'gallery') {
+          setAllGalleryImages(originalItems);
+        } else {
+          setAllFiles(originalItems);
+        }
+        
+        throw new Error(response.error || 'Eroare la ștergere');
+      }
+      
+      // If no items left after successful deletion, close viewer
+      if (newItems.length === 0) {
+        closeFileViewer();
+      }
+      
     } catch (error) {
       console.error('Error deleting item:', error);
       alert(`Eroare la ștergerea ${itemName}: ` + error.message);

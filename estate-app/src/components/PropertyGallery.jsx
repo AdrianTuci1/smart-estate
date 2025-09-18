@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Upload, X, Download, Eye, Trash2, Image as ImageIcon, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import apiService from '../services/api';
+import useFileViewerStore from '../stores/useFileViewerStore';
 
 const PropertyGallery = ({ selectedProperty, onPropertyUpdate, onGalleryOpen }) => {
+  const { updateGalleryImages } = useFileViewerStore();
   const [gallery, setGallery] = useState({ images: [], totalImages: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
@@ -24,6 +26,8 @@ const PropertyGallery = ({ selectedProperty, onPropertyUpdate, onGalleryOpen }) 
       
       if (response.success) {
         setGallery(response.data);
+        // Update global store with gallery images
+        updateGalleryImages(response.data.images || []);
       }
     } catch (error) {
       console.error('Error loading gallery:', error);
@@ -107,7 +111,9 @@ const PropertyGallery = ({ selectedProperty, onPropertyUpdate, onGalleryOpen }) 
         for (const imageId of selectedImages) {
           const image = gallery.images.find(img => img.id === imageId);
           if (image) {
-            await apiService.removePropertyImage(selectedProperty.id, image.url);
+            // Use originalUrl if available (for gallery images), otherwise use url
+            const imageUrl = image.originalUrl || image.url;
+            await apiService.removePropertyImage(selectedProperty.id, imageUrl);
           }
         }
         

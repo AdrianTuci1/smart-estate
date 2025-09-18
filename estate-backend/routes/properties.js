@@ -450,10 +450,22 @@ router.delete('/:id/images/:imageUrl', asyncHandler(async (req, res) => {
 
   // Delete image from S3
   try {
-    // Extract S3 key from URL (everything after bucket name)
-    const urlParts = decodedImageUrl.split('/');
-    const bucketIndex = urlParts.findIndex(part => part.includes('.s3.'));
-    const s3Key = urlParts.slice(bucketIndex + 1).join('/');
+    // Handle both presigned URLs and direct S3 URLs
+    let s3Key;
+    
+    if (decodedImageUrl.includes('X-Amz-Algorithm')) {
+      // This is a presigned URL - extract the original S3 URL
+      const urlParts = decodedImageUrl.split('?')[0]; // Remove query parameters
+      const urlPartsArray = urlParts.split('/');
+      const bucketIndex = urlPartsArray.findIndex(part => part.includes('.s3.'));
+      s3Key = urlPartsArray.slice(bucketIndex + 1).join('/');
+    } else {
+      // This is a direct S3 URL
+      const urlParts = decodedImageUrl.split('/');
+      const bucketIndex = urlParts.findIndex(part => part.includes('.s3.'));
+      s3Key = urlParts.slice(bucketIndex + 1).join('/');
+    }
+    
     await s3Utils.deleteFile(s3Key);
   } catch (error) {
     console.error('Error deleting image from S3:', error);
@@ -749,6 +761,7 @@ router.get('/:id/gallery', asyncHandler(async (req, res) => {
       return {
         id: `img_${index}`,
         url: presignedUrl,
+        originalUrl: imageUrl, // Keep original URL for deletion
         thumbnail: presignedUrl, // Using same presigned URL for thumbnail
         alt: `Property ${getResult.data.name} - Image ${index + 1}`
       };
