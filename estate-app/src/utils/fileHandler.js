@@ -68,14 +68,19 @@ export const getFileAction = (fileName, fileType = '') => {
   // Files that are best viewed in browser
   const viewableInBrowser = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
   
+  // Files that can be viewed with our document viewers
+  const documentViewable = ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'xlsm', 'xlsb', 'csv'];
+  
   // Files that should be downloaded for native app opening
-  const nativeAppFiles = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'dwg', 'dxf'];
+  const nativeAppFiles = ['ppt', 'pptx', 'dwg', 'dxf'];
   
   // Files that should just be downloaded
   const downloadFiles = ['zip', 'rar', '7z', 'tar', 'gz'];
   
   if (viewableInBrowser.includes(extension)) {
     return 'view';
+  } else if (documentViewable.includes(extension)) {
+    return 'document';
   } else if (nativeAppFiles.includes(extension)) {
     return 'native';
   } else {
@@ -111,6 +116,8 @@ export const getFileIcon = (fileName, fileType = '') => {
     // Spreadsheets
     xls: 'Sheet',
     xlsx: 'Sheet',
+    xlsm: 'Sheet',
+    xlsb: 'Sheet',
     csv: 'Sheet',
     
     // Presentations
@@ -164,6 +171,11 @@ export const handleFileAction = (file, action = 'auto') => {
   
   switch (action) {
     case 'view':
+      viewFileInBrowser(url);
+      break;
+    case 'document':
+      // Pentru documente, se va folosi viewer-ul integrat
+      // Această acțiune va fi gestionată de PropertyFileViewer
       viewFileInBrowser(url);
       break;
     case 'download':

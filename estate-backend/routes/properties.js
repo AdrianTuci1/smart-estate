@@ -12,14 +12,28 @@ const { s3Utils, S3_CONFIG } = require('../config/aws');
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: 25 * 1024 * 1024 // 25MB limit (pentru fișiere Excel mari)
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
+      // PDF documents
       'application/pdf', 
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
-      'application/msword', 
+      
+      // Word documents
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
+      
+      // Excel documents
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'application/vnd.ms-excel.sheet.macroEnabled.12', // .xlsm
+      'application/vnd.ms-excel.sheet.binary.macroEnabled.12', // .xlsb
+      'text/csv', // .csv
+      
+      // Text documents
       'text/plain',
+      
+      // Images
       'image/jpeg',
       'image/jpg',
       'image/png',
@@ -29,7 +43,7 @@ const upload = multer({
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Tip de fișier nepermis. Doar PDF, DOCX, DOC, TXT și imagini sunt acceptate.'), false);
+      cb(new Error('Tip de fișier nepermis. Sunt acceptate: PDF, DOCX, DOC, XLSX, XLS, XLSM, XLSB, CSV, TXT și imagini.'), false);
     }
   }
 });

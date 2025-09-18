@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { X, Download, ExternalLink, File, Image as ImageIcon, FileText, FileVideo, FileAudio, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { X, Download, ExternalLink, File, Image as ImageIcon, FileText, FileVideo, FileAudio, ChevronLeft, ChevronRight, Trash2, Sheet } from 'lucide-react';
 import apiService from '../services/api';
 import { handleFileAction } from '../utils/fileHandler';
 import useAppStore from '../stores/useAppStore';
 import useFileViewerStore from '../stores/useFileViewerStore';
+import { DocxViewer, ExcelViewer, PDFViewer, getDocumentViewerType, isDocumentViewable } from './DocumentViewers';
 
 const PropertyFileViewer = () => {
   const { selectedProperty } = useAppStore();
@@ -110,6 +111,9 @@ const PropertyFileViewer = () => {
     }
     if (['doc', 'docx', 'txt', 'rtf'].includes(extension)) {
       return <FileText className="h-8 w-8 text-blue-600" />;
+    }
+    if (['xls', 'xlsx', 'xlsm', 'xlsb', 'csv'].includes(extension)) {
+      return <Sheet className="h-8 w-8 text-green-600" />;
     }
     
     return <File className="h-8 w-8 text-gray-500" />;
@@ -254,7 +258,7 @@ const PropertyFileViewer = () => {
       {/* Viewer Panel */}
       <div className="fixed inset-y-0 bg-white z-50 flex flex-col shadow-2xl border-r border-gray-200 transform transition-transform" style={{ left: 0, right: '384px' }}>
         {/* Header */}
-        <div className="bg-gray-50 border-b border-gray-200 p-4 flex items-center justify-between">
+        <div className="bg-gray-50 border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-3">
               {currentItem && getItemIcon(currentItem)}
@@ -277,39 +281,39 @@ const PropertyFileViewer = () => {
               </span>
             )}
           
-          {/* Actions */}
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleDownload}
-              className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
-              title="Descarcă"
-            >
-              <Download className="h-4 w-4 text-gray-700" />
-            </button>
-            <button
-              onClick={handleOpenInApp}
-              className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
-              title="Deschide în aplicație"
-            >
-              <ExternalLink className="h-4 w-4 text-gray-700" />
-            </button>
-            <button
-              onClick={handleDelete}
-              className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
-              title="Șterge"
-            >
-              <Trash2 className="h-4 w-4 text-red-600" />
-            </button>
-            <button
-              onClick={closeFileViewer}
-              className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
-              title="Închide"
-            >
-              <X className="h-4 w-4 text-gray-700" />
-            </button>
+            {/* Actions */}
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleDownload}
+                className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                title="Descarcă"
+              >
+                <Download className="h-4 w-4 text-gray-700" />
+              </button>
+              <button
+                onClick={handleOpenInApp}
+                className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                title="Deschide în aplicație"
+              >
+                <ExternalLink className="h-4 w-4 text-gray-700" />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                title="Șterge"
+              >
+                <Trash2 className="h-4 w-4 text-red-600" />
+              </button>
+              <button
+                onClick={closeFileViewer}
+                className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                title="Închide"
+              >
+                <X className="h-4 w-4 text-gray-700" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
         {/* Navigation arrows */}
         {items.length > 1 && (
@@ -330,58 +334,123 @@ const PropertyFileViewer = () => {
         )}
 
         {/* Content Area */}
-        <div className="flex-1 flex items-center justify-center p-4 bg-gray-50">
+        <div className="flex-1 relative bg-gray-50 overflow-hidden">
           {isLoading ? (
-            <div className="text-gray-700">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-700 mx-auto"></div>
-              <p className="mt-4">Se încarcă...</p>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-gray-700 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-700 mx-auto"></div>
+                <p className="mt-4">Se încarcă...</p>
+              </div>
             </div>
-                 ) : items.length === 0 ? (
-                   <div className="text-center text-gray-700">
-                     {viewerType === 'gallery' ? <ImageIcon className="h-16 w-16 mx-auto mb-4 text-gray-400" /> : <File className="h-16 w-16 mx-auto mb-4 text-gray-400" />}
-                     <p className="text-lg">Nu există {viewerType === 'gallery' ? 'imagini' : 'fișiere'}</p>
-                     <p className="text-sm text-gray-500">Această proprietate nu are {viewerType === 'gallery' ? 'imagini' : 'fișiere'} încărcate</p>
-                   </div>
+          ) : items.length === 0 ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center text-gray-700">
+                {viewerType === 'gallery' ? <ImageIcon className="h-16 w-16 mx-auto mb-4 text-gray-400" /> : <File className="h-16 w-16 mx-auto mb-4 text-gray-400" />}
+                <p className="text-lg">Nu există {viewerType === 'gallery' ? 'imagini' : 'fișiere'}</p>
+                <p className="text-sm text-gray-500">Această proprietate nu are {viewerType === 'gallery' ? 'imagini' : 'fișiere'} încărcate</p>
+              </div>
+            </div>
           ) : currentItem ? (
-                   <div className="w-full h-full flex items-center justify-center">
-                     {viewerType === 'gallery' ? (
-                       // For gallery images, show image directly
-                       <img
-                         src={currentItem.url}
-                         alt={currentItem.alt}
-                         className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                       />
-                     ) : viewUrl ? (
-                // For files, show in iframe
-                <iframe
-                  src={viewUrl}
-                  className="w-full h-full border-0 rounded-lg bg-white shadow-lg"
-                  title={currentItem.name}
-                />
+            <>
+              {viewerType === 'gallery' ? (
+                // For gallery images, show image directly
+                <div className="absolute inset-0 flex items-center justify-center p-4">
+                  <img
+                    src={currentItem.url}
+                    alt={currentItem.alt}
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                  />
+                </div>
+              ) : viewUrl ? (
+                // Check if it's a document that can be viewed with our viewers
+                (() => {
+                  const documentType = getDocumentViewerType(currentItem.name);
+                  const isViewable = isDocumentViewable(currentItem.name);
+                  
+                  if (isViewable && documentType) {
+                    switch (documentType) {
+                      case 'docx':
+                        return (
+                          <div className="absolute inset-0">
+                            <DocxViewer
+                              fileUrl={viewUrl}
+                              fileName={currentItem.name}
+                              onError={(error) => console.error('DocxViewer error:', error)}
+                            />
+                          </div>
+                        );
+                      case 'excel':
+                        return (
+                          <div className="absolute inset-0">
+                            <ExcelViewer
+                              fileUrl={viewUrl}
+                              fileName={currentItem.name}
+                              allowEdit={true}
+                              onError={(error) => console.error('ExcelViewer error:', error)}
+                            />
+                          </div>
+                        );
+                      case 'pdf':
+                        return (
+                          <div className="absolute inset-0">
+                            <PDFViewer
+                              fileUrl={viewUrl}
+                              fileName={currentItem.name}
+                              onError={(error) => console.error('PDFViewer error:', error)}
+                            />
+                          </div>
+                        );
+                      default:
+                        // Fallback to iframe for other document types
+                        return (
+                          <div className="absolute inset-0 p-4">
+                            <iframe
+                              src={viewUrl}
+                              className="w-full h-full border-0 rounded-lg bg-white shadow-lg"
+                              title={currentItem.name}
+                            />
+                          </div>
+                        );
+                    }
+                  } else {
+                    // For non-document files, show in iframe
+                    return (
+                      <div className="absolute inset-0 p-4">
+                        <iframe
+                          src={viewUrl}
+                          className="w-full h-full border-0 rounded-lg bg-white shadow-lg"
+                          title={currentItem.name}
+                        />
+                      </div>
+                    );
+                  }
+                })()
               ) : (
-                <div className="text-center text-gray-700 bg-white p-8 rounded-lg shadow-lg">
-                  <div className="flex items-center justify-center mb-4">
-                    {getItemIcon(currentItem)}
+                <div className="absolute inset-0 flex items-center justify-center p-4">
+                  <div className="text-center text-gray-700 bg-white p-8 rounded-lg shadow-lg">
+                    <div className="flex items-center justify-center mb-4">
+                      {getItemIcon(currentItem)}
+                    </div>
+                    <p className="text-lg mb-2">{currentItem.name}</p>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Nu se poate previzualiza acest tip de fișier
+                    </p>
+                    <button
+                      onClick={handleDownload}
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    >
+                      Descarcă fișierul
+                    </button>
                   </div>
-                  <p className="text-lg mb-2">{currentItem.name}</p>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Nu se poate previzualiza acest tip de fișier
-                  </p>
-                  <button
-                    onClick={handleDownload}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                  >
-                    Descarcă fișierul
-                  </button>
                 </div>
               )}
-            </div>
+            </>
           ) : null}
         </div>
 
         {/* Item List (Bottom) */}
         {items.length > 1 && (
-          <div className="bg-white border-t border-gray-200 p-4">
+          <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
             <div className="flex space-x-2 overflow-x-auto">
               {items.map((item, index) => (
                 <div
@@ -393,17 +462,17 @@ const PropertyFileViewer = () => {
                   }`}
                   onClick={() => setCurrentItemIndex(index)}
                 >
-                         <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-                           {viewerType === 'gallery' ? (
-                             <img
-                               src={item.url}
-                               alt={item.alt}
-                               className="w-full h-full object-cover"
-                             />
-                           ) : (
-                             getItemIcon(item)
-                           )}
-                         </div>
+                  <div className="w-full h-full bg-gray-50 flex items-center justify-center">
+                    {viewerType === 'gallery' ? (
+                      <img
+                        src={item.url}
+                        alt={item.alt}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      getItemIcon(item)
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

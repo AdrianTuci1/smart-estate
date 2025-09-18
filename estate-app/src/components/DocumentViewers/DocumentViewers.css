@@ -1,0 +1,303 @@
+/* Stiluri pentru componentele de vizualizare a documentelor */
+
+/* Luckysheet container styling */
+.luckysheet-container {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: #fff;
+  overflow: hidden !important;
+}
+
+/* Forțează Luckysheet să respecte containerul */
+.luckysheet-container #luckysheet {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+}
+
+.luckysheet-container .luckysheet-wa-editor {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Override pentru stilurile Luckysheet */
+.luckysheet-container .luckysheet-wa-editor {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.luckysheet-container .luckysheet-toolbar {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  height: 40px !important;
+  min-height: 40px !important;
+}
+
+.luckysheet-container .luckysheet-toolbar button {
+  border-radius: 4px !important;
+  margin: 2px !important;
+}
+
+.luckysheet-container .luckysheet-toolbar button:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* Forțează dimensiunile pentru toate elementele Luckysheet */
+.luckysheet-container .luckysheet-grid-container {
+  width: 100% !important;
+  height: calc(100% - 40px) !important;
+}
+
+.luckysheet-container .luckysheet-grid-container-c {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ascunde scroll-urile externe dacă apar */
+.luckysheet-container .luckysheet-scrollbar-x,
+.luckysheet-container .luckysheet-scrollbar-y {
+  z-index: 10 !important;
+}
+
+/* Previne overflow-ul din container */
+.luckysheet-container * {
+  box-sizing: border-box !important;
+}
+
+/* Stiluri pentru viewer-ele de documente */
+.document-viewer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  overflow: hidden;
+}
+
+.document-viewer-header {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.document-viewer-content {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+/* Stiluri pentru conținutul DOCX */
+.docx-content {
+  max-width: none;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  line-height: 1.6;
+  color: #333;
+  padding: 24px;
+}
+
+.docx-content h1,
+.docx-content h2,
+.docx-content h3,
+.docx-content h4,
+.docx-content h5,
+.docx-content h6 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: bold;
+}
+
+.docx-content p {
+  margin-bottom: 1em;
+}
+
+.docx-content ul,
+.docx-content ol {
+  margin: 1em 0;
+  padding-left: 2em;
+}
+
+.docx-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.docx-content table td,
+.docx-content table th {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.docx-content table th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+/* Stiluri pentru tabelele Excel */
+.excel-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.excel-table td {
+  border: 1px solid #d1d5db;
+  padding: 6px 12px;
+  white-space: nowrap;
+  min-width: 80px;
+  background: #fff;
+}
+
+.excel-table td:hover {
+  background-color: #f3f4f6;
+}
+
+.excel-table tr:nth-child(even) td {
+  background-color: #f9fafb;
+}
+
+.excel-table tr:nth-child(even) td:hover {
+  background-color: #f3f4f6;
+}
+
+/* Sheet tabs styling */
+.sheet-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.sheet-tab {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 6px 6px 0 0;
+  border-bottom: 2px solid transparent;
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sheet-tab:hover {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.sheet-tab.active {
+  background: #dcfce7;
+  border-bottom-color: #16a34a;
+  color: #15803d;
+}
+
+/* Loading states */
+.document-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #fff;
+}
+
+.document-loading .spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error states */
+.document-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #fff;
+  padding: 32px;
+}
+
+.document-error-content {
+  text-align: center;
+  max-width: 400px;
+}
+
+.document-error-icon {
+  color: #ef4444;
+  margin: 0 auto 16px;
+}
+
+.document-error-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.document-error-message {
+  color: #6b7280;
+  margin-bottom: 24px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .document-viewer-header {
+    padding: 8px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .docx-content {
+    padding: 16px;
+    font-size: 14px;
+  }
+  
+  .excel-table {
+    font-size: 12px;
+  }
+  
+  .excel-table td {
+    padding: 4px 8px;
+    min-width: 60px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .document-viewer {
+    background: #1f2937;
+    color: #f3f4f6;
+  }
+  
+  .document-viewer-header {
+    background: #374151;
+    border-bottom-color: #4b5563;
+  }
+  
+  .docx-content {
+    background: #1f2937;
+    color: #f3f4f6;
+  }
+  
+  .excel-table td {
+    background: #1f2937;
+    border-color: #4b5563;
+    color: #f3f4f6;
+  }
+  
+  .excel-table tr:nth-child(even) td {
+    background-color: #374151;
+  }
+}
