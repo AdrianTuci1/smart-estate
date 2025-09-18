@@ -9,7 +9,6 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 // Import routes
 const authRoutes = require('./routes/auth');
 const propertyRoutes = require('./routes/properties');
-const apartmentRoutes = require('./routes/apartments');
 const searchRoutes = require('./routes/search');
 const companyRoutes = require('./routes/companies');
 const userRoutes = require('./routes/users');
@@ -58,7 +57,6 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
-app.use('/api/apartments', apartmentRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/users', userRoutes);
@@ -72,7 +70,6 @@ app.get('/', (req, res) => {
     endpoints: {
       auth: '/api/auth',
       properties: '/api/properties',
-      apartments: '/api/apartments',
       search: '/api/search',
       companies: '/api/companies',
       users: '/api/users',

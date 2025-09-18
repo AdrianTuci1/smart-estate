@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { X, Save, Edit3 } from 'lucide-react';
 import useAppStore from '../../stores/useAppStore';
+import useFileViewerStore from '../../stores/useFileViewerStore';
 import apiService from '../../services/api';
 import PropertyDescription from './PropertyDescription';
 
-const PropertyDrawer = ({ onFileClick, onGalleryOpen }) => {
+const PropertyDrawer = () => {
   const { selectedProperty, isDrawerOpen, closeDrawer } = useAppStore();
+  const { openFileViewer, openGalleryViewer } = useFileViewerStore();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -239,8 +241,8 @@ const PropertyDrawer = ({ onFileClick, onGalleryOpen }) => {
             setCurrentImageIndex={setCurrentImageIndex}
             handleImageUpload={handleImageUpload}
             selectedProperty={selectedProperty}
-            onFileClick={onFileClick}
-            onGalleryOpen={onGalleryOpen}
+            onFileClick={openFileViewer}
+            onGalleryOpen={openGalleryViewer}
           />
         </div>
       </div>

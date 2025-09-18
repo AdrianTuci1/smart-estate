@@ -6,7 +6,7 @@ const Property = require('../models/Property');
 const { authenticateToken, requireCompanyAccess } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
-const { s3Utils, textractUtils, S3_CONFIG } = require('../config/aws');
+const { s3Utils, S3_CONFIG } = require('../config/aws');
 
 // Configure multer for file uploads
 const upload = multer({
@@ -116,16 +116,9 @@ router.get('/:id', asyncHandler(async (req, res) => {
     });
   }
 
-  // Get leads interested in this property
-  const leadsResult = await Lead.getByPropertyInterest(req.user.companyId, id);
-  const leads = leadsResult.success ? leadsResult.data : [];
-
   res.json({
     success: true,
-    data: {
-      ...result.data,
-      leads
-    }
+    data: result.data
   });
 }));
 

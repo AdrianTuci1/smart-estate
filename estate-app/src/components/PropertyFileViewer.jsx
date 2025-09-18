@@ -2,8 +2,18 @@ import { useState, useEffect } from 'react';
 import { X, Download, ExternalLink, File, Image as ImageIcon, FileText, FileVideo, FileAudio, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import apiService from '../services/api';
 import { handleFileAction } from '../utils/fileHandler';
+import useAppStore from '../stores/useAppStore';
+import useFileViewerStore from '../stores/useFileViewerStore';
 
-const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems = [], type = 'files', onItemUpdate }) => {
+const PropertyFileViewer = () => {
+  const { selectedProperty } = useAppStore();
+  const { 
+    isOpen, 
+    viewerType, 
+    closeFileViewer,
+    getCurrentItems 
+  } = useFileViewerStore();
+  
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
@@ -12,16 +22,17 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
   // Load items when component opens
   useEffect(() => {
     if (isOpen) {
-      if (selectedItems.length > 0) {
+      const currentItems = getCurrentItems();
+      if (currentItems.length > 0) {
         // Use selected items (preview mode)
-        setItems(selectedItems);
+        setItems(currentItems);
         setCurrentItemIndex(0);
       } else if (selectedProperty?.id) {
         // Load all items from property
         loadPropertyItems();
       }
     }
-  }, [isOpen, selectedProperty?.id, selectedItems]);
+  }, [isOpen, selectedProperty?.id, getCurrentItems]);
 
   // Load view URL when item changes
   useEffect(() => {
@@ -33,7 +44,7 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
   const loadPropertyItems = async () => {
     try {
       setIsLoading(true);
-      if (type === 'gallery') {
+      if (viewerType === 'gallery') {
         // Load gallery images
         const response = await apiService.getPropertyGallery(selectedProperty.id);
         if (response.success && response.data.images) {
@@ -59,9 +70,9 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
     if (items.length === 0 || currentItemIndex >= items.length) return;
     
     const currentItem = items[currentItemIndex];
-    
+
     try {
-      if (type === 'gallery') {
+      if (viewerType === 'gallery') {
         // For gallery images, use the URL directly
         setViewUrl(currentItem.url);
       } else {
@@ -78,7 +89,7 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
   };
 
   const getItemIcon = (item) => {
-    if (type === 'gallery') {
+    if (viewerType === 'gallery') {
       return <ImageIcon className="h-8 w-8 text-blue-500" />;
     }
     
@@ -114,11 +125,11 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
 
   const handleDownload = async () => {
     if (items.length === 0 || currentItemIndex >= items.length) return;
-    
+
     const currentItem = items[currentItemIndex];
-    
+
     try {
-      if (type === 'gallery') {
+      if (viewerType === 'gallery') {
         // For gallery images, download directly
         const link = document.createElement('a');
         link.href = currentItem.url;
@@ -143,11 +154,11 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
 
   const handleOpenInApp = async () => {
     if (items.length === 0 || currentItemIndex >= items.length) return;
-    
+
     const currentItem = items[currentItemIndex];
-    
+
     try {
-      if (type === 'gallery') {
+      if (viewerType === 'gallery') {
         // For gallery images, open directly
         const fileObj = {
           url: currentItem.url,
@@ -176,14 +187,14 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
     if (items.length === 0 || currentItemIndex >= items.length) return;
     
     const currentItem = items[currentItemIndex];
-    const itemName = currentItem.name || currentItem.alt || (type === 'gallery' ? 'imaginea' : 'fișierul');
+    const itemName = currentItem.name || currentItem.alt || (viewerType === 'gallery' ? 'imaginea' : 'fișierul');
     
     if (!confirm(`Sigur doriți să ștergeți ${itemName}?`)) return;
     
     try {
       setIsLoading(true);
       
-      if (type === 'gallery') {
+      if (viewerType === 'gallery') {
         // Delete gallery image
         const response = await apiService.removePropertyImage(selectedProperty.id, currentItem.url);
         if (response.success) {
@@ -196,14 +207,9 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
             setCurrentItemIndex(Math.max(0, newItems.length - 1));
           }
           
-          // Notify parent component
-          if (onItemUpdate) {
-            onItemUpdate(response.data);
-          }
-          
           // If no items left, close viewer
           if (newItems.length === 0) {
-            onClose();
+            closeFileViewer();
           }
         }
       } else {
@@ -219,14 +225,9 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
             setCurrentItemIndex(Math.max(0, newItems.length - 1));
           }
           
-          // Notify parent component
-          if (onItemUpdate) {
-            onItemUpdate(response.data);
-          }
-          
           // If no items left, close viewer
           if (newItems.length === 0) {
-            onClose();
+            closeFileViewer();
           }
         }
       }
@@ -247,7 +248,7 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/20 z-40 transition-opacity"
-        onClick={onClose}
+        onClick={closeFileViewer}
       />
       
       {/* Viewer Panel */}
@@ -259,10 +260,10 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
               {currentItem && getItemIcon(currentItem)}
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 truncate max-w-md">
-                  {currentItem?.name || currentItem?.alt || (type === 'gallery' ? 'Imagine' : 'Fișier')}
+                  {currentItem?.name || currentItem?.alt || (viewerType === 'gallery' ? 'Imagine' : 'Fișier')}
                 </h2>
                 <p className="text-sm text-gray-600">
-                  {type === 'gallery' ? 'Imagine' : `${currentItem?.size || ''} • ${currentItem?.type || ''}`}
+                  {viewerType === 'gallery' ? 'Imagine' : `${currentItem?.size || ''} • ${currentItem?.type || ''}`}
                 </p>
               </div>
             </div>
@@ -300,7 +301,7 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
               <Trash2 className="h-4 w-4 text-red-600" />
             </button>
             <button
-              onClick={onClose}
+              onClick={closeFileViewer}
               className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
               title="Închide"
             >
@@ -335,22 +336,22 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-700 mx-auto"></div>
               <p className="mt-4">Se încarcă...</p>
             </div>
-          ) : items.length === 0 ? (
-            <div className="text-center text-gray-700">
-              {type === 'gallery' ? <ImageIcon className="h-16 w-16 mx-auto mb-4 text-gray-400" /> : <File className="h-16 w-16 mx-auto mb-4 text-gray-400" />}
-              <p className="text-lg">Nu există {type === 'gallery' ? 'imagini' : 'fișiere'}</p>
-              <p className="text-sm text-gray-500">Această proprietate nu are {type === 'gallery' ? 'imagini' : 'fișiere'} încărcate</p>
-            </div>
+                 ) : items.length === 0 ? (
+                   <div className="text-center text-gray-700">
+                     {viewerType === 'gallery' ? <ImageIcon className="h-16 w-16 mx-auto mb-4 text-gray-400" /> : <File className="h-16 w-16 mx-auto mb-4 text-gray-400" />}
+                     <p className="text-lg">Nu există {viewerType === 'gallery' ? 'imagini' : 'fișiere'}</p>
+                     <p className="text-sm text-gray-500">Această proprietate nu are {viewerType === 'gallery' ? 'imagini' : 'fișiere'} încărcate</p>
+                   </div>
           ) : currentItem ? (
-            <div className="w-full h-full flex items-center justify-center">
-              {type === 'gallery' ? (
-                // For gallery images, show image directly
-                <img
-                  src={currentItem.url}
-                  alt={currentItem.alt}
-                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                />
-              ) : viewUrl ? (
+                   <div className="w-full h-full flex items-center justify-center">
+                     {viewerType === 'gallery' ? (
+                       // For gallery images, show image directly
+                       <img
+                         src={currentItem.url}
+                         alt={currentItem.alt}
+                         className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                       />
+                     ) : viewUrl ? (
                 // For files, show in iframe
                 <iframe
                   src={viewUrl}
@@ -392,17 +393,17 @@ const PropertyFileViewer = ({ selectedProperty, isOpen, onClose, selectedItems =
                   }`}
                   onClick={() => setCurrentItemIndex(index)}
                 >
-                  <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-                    {type === 'gallery' ? (
-                      <img
-                        src={item.url}
-                        alt={item.alt}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      getItemIcon(item)
-                    )}
-                  </div>
+                         <div className="w-full h-full bg-gray-50 flex items-center justify-center">
+                           {viewerType === 'gallery' ? (
+                             <img
+                               src={item.url}
+                               alt={item.alt}
+                               className="w-full h-full object-cover"
+                             />
+                           ) : (
+                             getItemIcon(item)
+                           )}
+                         </div>
                 </div>
               ))}
             </div>

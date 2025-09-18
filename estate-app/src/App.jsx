@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import useAppStore from './stores/useAppStore';
 import useSearchStore from './stores/useSearchStore';
+import useFileViewerStore from './stores/useFileViewerStore';
 import LoginForm from './components/LoginForm';
 import CompanySetup from './components/CompanySetup';
 import UserManagement from './components/UserManagement';
@@ -18,14 +19,19 @@ const AppContent = () => {
     setActiveView, 
     selectProperty, 
     setMapCenter,
-    selectedProperty
+    selectedProperty,
+    isDrawerOpen
   } = useAppStore();
   const { searchQuery } = useSearchStore();
+  const { closeFileViewer } = useFileViewerStore();
   const [showCompanySetup, setShowCompanySetup] = useState(false);
-  const [isFileViewerOpen, setIsFileViewerOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedGalleryImages, setSelectedGalleryImages] = useState([]);
-  const [viewerType, setViewerType] = useState('files'); // 'files' or 'gallery'
+
+  // Close file viewer when drawer closes
+  useEffect(() => {
+    if (!isDrawerOpen) {
+      closeFileViewer();
+    }
+  }, [isDrawerOpen, closeFileViewer]);
 
   const handleLogin = (userData) => {
     login(userData);
@@ -98,37 +104,10 @@ const AppContent = () => {
         )}
 
         {/* Property Drawer */}
-        <PropertyDrawer 
-          onFileClick={(file) => {
-            setSelectedFile(file);
-            setSelectedGalleryImages([]);
-            setViewerType('files');
-            setIsFileViewerOpen(true);
-          }}
-          onGalleryOpen={(images) => {
-            setSelectedGalleryImages(images);
-            setSelectedFile(null);
-            setViewerType('gallery');
-            setIsFileViewerOpen(true);
-          }}
-        />
+        <PropertyDrawer />
 
         {/* File Viewer */}
-        <PropertyFileViewer
-          selectedProperty={selectedProperty}
-          isOpen={isFileViewerOpen}
-          onClose={() => {
-            setIsFileViewerOpen(false);
-            setSelectedFile(null);
-            setSelectedGalleryImages([]);
-          }}
-          selectedItems={viewerType === 'files' ? (selectedFile ? [selectedFile] : []) : selectedGalleryImages}
-          type={viewerType}
-          onItemUpdate={(updatedData) => {
-            // Handle file updates if needed
-            console.log('Items updated:', updatedData);
-          }}
-        />
+        <PropertyFileViewer />
       </main>
 
       {/* Navigation Dock */}
