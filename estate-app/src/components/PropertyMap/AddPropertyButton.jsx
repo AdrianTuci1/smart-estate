@@ -8,7 +8,7 @@ const AddPropertyButton = ({ isAddingProperty, handleAddProperty }) => {
         className={`flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-colors ${
           isAddingProperty 
             ? 'bg-red-600 hover:bg-red-700 text-white' 
-            : 'bg-primary-600 hover:bg-primary-700 text-white'
+            : 'bg-blue-600 hover:bg-blue-700 text-white'
         }`}
         title={isAddingProperty ? "Anulează adăugarea" : "Adaugă proprietate nouă"}
       >

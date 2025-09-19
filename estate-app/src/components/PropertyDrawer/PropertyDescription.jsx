@@ -54,7 +54,7 @@ const PropertyDescription = ({
                   )}
                 </div>
                 <div className="flex-1">
-                  <label className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors cursor-pointer">
+                  <label className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
                     <Upload className="h-4 w-4" />
                     <span>Încarcă din calculator</span>
                     <input

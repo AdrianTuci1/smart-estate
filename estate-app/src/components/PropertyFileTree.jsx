@@ -6,7 +6,7 @@ import { handleFileAction, getFileIcon, getFileAction } from '../utils/fileHandl
 import useFileViewerStore from '../stores/useFileViewerStore';
 
 const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
-  const { setAllFiles } = useFileViewerStore();
+  const { setAllFiles, addFileOptimistic, removeFileOptimistic } = useFileViewerStore();
   const [files, setFiles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedIds, setExpandedIds] = useState(['root', 'documents', 'images', 'plans']);
@@ -187,17 +187,55 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
     setIsLoading(true);
     try {
       for (const file of uploadedFiles) {
+        // Optimistic update - add file immediately to UI
+        const tempFile = {
+          id: `temp_${Date.now()}_${Math.random()}`,
+          name: file.name,
+          size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+          type: file.name.split('.').pop()?.toUpperCase() || 'FILE',
+          url: '',
+          s3Key: '',
+          createdAt: new Date().toISOString()
+        };
+        
+        // Add optimistically to local state
+        setFiles(prev => [...prev, tempFile]);
+        addFileOptimistic(tempFile);
+        
+        // Upload file
         const response = await apiService.uploadPropertyFile(selectedProperty.id, file);
         if (response.success) {
           console.log('File uploaded successfully:', response.data);
+          
+          // Replace temp file with real file data
+          const realFile = {
+            id: response.data.fileId || tempFile.id,
+            name: response.data.fileName || file.name,
+            size: response.data.fileSize || tempFile.size,
+            type: response.data.fileType || tempFile.type,
+            url: response.data.fileUrl || '',
+            s3Key: response.data.s3Key || '',
+            createdAt: response.data.createdAt || tempFile.createdAt
+          };
+          
+          // Update with real data
+          setFiles(prev => prev.map(f => f.id === tempFile.id ? realFile : f));
+          // Note: We'd need to update the optimistic store too, but since we reload, it's fine
+        } else {
+          // Remove temp file on failure
+          setFiles(prev => prev.filter(f => f.id !== tempFile.id));
+          removeFileOptimistic(tempFile.id);
         }
       }
       
-      // Reload files after successful upload
+      // Reload files to get updated data
       await loadPropertyFiles();
     } catch (error) {
       console.error('Error uploading files:', error);
       alert('Eroare la încărcarea fișierelor');
+      
+      // Remove any temp files on error
+      setFiles(prev => prev.filter(f => !f.id.startsWith('temp_')));
     } finally {
       setIsLoading(false);
     }
@@ -268,17 +306,32 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
     if (!selectedProperty?.id || !file.id) return;
     
     if (confirm(`Sigur doriți să ștergeți fișierul "${file.name}"?`)) {
+      // Store original state for rollback
+      const originalFiles = [...files];
+      
+      // Optimistic update - remove file immediately from UI
+      setFiles(prev => prev.filter(f => f.id !== file.id));
+      removeFileOptimistic(file.id);
+      
       setIsLoading(true);
       try {
         const response = await apiService.deletePropertyFile(selectedProperty.id, file.id);
         if (response.success) {
           console.log('File deleted successfully');
-          // Reload files after successful deletion
+          // Reload files to ensure consistency
           await loadPropertyFiles();
+        } else {
+          // Rollback on failure
+          setFiles(originalFiles);
+          // Note: We'd need to restore the file in optimistic store too
+          console.error('Failed to delete file:', response.error);
+          alert('Eroare la ștergerea fișierului: ' + response.error);
         }
       } catch (error) {
         console.error('Error deleting file:', error);
-        alert('Eroare la ștergerea fișierului');
+        // Rollback on error
+        setFiles(originalFiles);
+        alert('Eroare la ștergerea fișierului: ' + error.message);
       } finally {
         setIsLoading(false);
       }

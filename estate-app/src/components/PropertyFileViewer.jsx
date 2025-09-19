@@ -18,7 +18,9 @@ const PropertyFileViewer = () => {
     setAllFiles,
     setAllGalleryImages,
     updateItemsAfterDeletion,
-    updateGalleryImages
+    updateGalleryImages,
+    removeFileOptimistic,
+    removeGalleryImageOptimistic
   } = useFileViewerStore();
   
   const [items, setItems] = useState([]);
@@ -216,8 +218,12 @@ const PropertyFileViewer = () => {
       const newItems = items.filter((_, index) => index !== currentItemIndex);
       setItems(newItems);
       
-      // Update global state optimistically
-      updateItemsAfterDeletion(currentItemIndex, viewerType);
+      // Update global state optimistically using new functions
+      if (viewerType === 'gallery') {
+        removeGalleryImageOptimistic(currentItem.url);
+      } else {
+        removeFileOptimistic(currentItem.id);
+      }
       
       // Adjust current index if needed
       let newIndex = currentItemIndex;
@@ -244,8 +250,10 @@ const PropertyFileViewer = () => {
         // Rollback global state
         if (viewerType === 'gallery') {
           setAllGalleryImages(originalItems);
+          // Note: We'd need to restore the image optimistically too
         } else {
           setAllFiles(originalItems);
+          // Note: We'd need to restore the file optimistically too
         }
         
         throw new Error(response.error || 'Eroare la ștergere');

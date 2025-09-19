@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Save, Edit3 } from 'lucide-react';
+import { X, Save, Edit3, Trash2 } from 'lucide-react';
 import useAppStore from '../../stores/useAppStore';
 import useFileViewerStore from '../../stores/useFileViewerStore';
 import apiService from '../../services/api';
@@ -51,21 +51,18 @@ const PropertyDrawer = () => {
           setIsCreating(false);
           setIsEditing(false);
         }
+
         setFormData({
           name: selectedProperty.name || '',
           address: selectedProperty.address || '',
           status: selectedProperty.status || 'în construcție',
-          image: selectedProperty.image || '',
+          image: selectedProperty.mainImage || '',
           description: selectedProperty.description || '',
           lat: selectedProperty.position?.lat || '',
           lng: selectedProperty.position?.lng || ''
         });
-        // Set gallery images based on actual property data
-        if (selectedProperty.image) {
-          setGalleryImages([selectedProperty.image]);
-        } else {
-          setGalleryImages([]);
-        }
+        // Set gallery images based on actual property images array
+        setGalleryImages(selectedProperty.images || []);
       }
     }
   }, [isDrawerOpen, selectedProperty]);
@@ -97,7 +94,6 @@ const PropertyDrawer = () => {
           }
         };
         
-        console.log('Creating new property:', propertyData);
         const response = await apiService.createProperty(propertyData);
         
         if (response.success) {
@@ -123,7 +119,6 @@ const PropertyDrawer = () => {
           }
         };
         
-        console.log('Updating property:', propertyData);
         const response = await apiService.updateProperty(selectedProperty.id, propertyData);
         
         if (response.success) {
@@ -183,10 +178,31 @@ const PropertyDrawer = () => {
     });
   };
 
+  const handleDelete = async () => {
+    if (!selectedProperty || !selectedProperty.id) return;
+    
+    const confirmed = window.confirm('Sigur doriți să ștergeți această proprietate? Această acțiune nu poate fi anulată.');
+    if (!confirmed) return;
+    
+    try {
+      const response = await apiService.deleteProperty(selectedProperty.id);
+      if (response.success) {
+        console.log('Property deleted successfully');
+        closeDrawer();
+      } else {
+        console.error('Failed to delete property:', response.error);
+        alert('Eroare la ștergerea proprietății: ' + response.error);
+      }
+    } catch (error) {
+      console.error('Error deleting property:', error);
+      alert('Eroare la ștergerea proprietății. Vă rugăm să încercați din nou.');
+    }
+  };
+
   return (
     <div className="absolute inset-y-0 right-0 z-50 w-96 bg-white/95 backdrop-blur-sm shadow-drawer transform transition-all duration-300 ease-in-out translate-x-0">
       <div className="flex flex-col h-full">
-        {/* Header with Close and Edit buttons */}
+        {/* Header with Close, Edit and Delete buttons */}
         <div className={`flex items-center p-4 border-b border-gray-200 ${
           isEditing || isCreating 
             ? 'justify-end space-x-2' 
@@ -199,7 +215,7 @@ const PropertyDrawer = () => {
               className={`flex items-center space-x-1 px-3 py-1 text-sm rounded-lg transition-colors ${
                 isSaving 
                   ? 'bg-gray-400 text-white cursor-not-allowed' 
-                  : 'bg-primary-600 text-white hover:bg-primary-700'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
               <Save className="h-4 w-4" />
@@ -211,13 +227,24 @@ const PropertyDrawer = () => {
               </span>
             </button>
           ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center space-x-1 px-3 py-1 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              <Edit3 className="h-4 w-4" />
-              <span>Editează</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center space-x-1 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Edit3 className="h-4 w-4" />
+                <span>Editează</span>
+              </button>
+              {selectedProperty && selectedProperty.id && (
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center space-x-1 px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Șterge</span>
+                </button>
+              )}
+            </div>
           )}
           <button
             onClick={handleClose}

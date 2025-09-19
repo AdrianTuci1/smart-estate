@@ -80,6 +80,49 @@ const useFileViewerStore = create((set, get) => ({
     }
   },
   
+  // Optimistic file operations
+  addFileOptimistic: (file) => {
+    const { allFiles } = get();
+    const newFiles = [...allFiles, file];
+    set({ allFiles: newFiles });
+  },
+  
+  removeFileOptimistic: (fileId) => {
+    const { allFiles, selectedFile, viewerType } = get();
+    const newFiles = allFiles.filter(file => file.id !== fileId);
+    set({ allFiles: newFiles });
+    
+    // If currently viewing the deleted file, update selected file
+    if (viewerType === 'files' && selectedFile && selectedFile.id === fileId) {
+      set({ selectedFile: newFiles.length > 0 ? newFiles[0] : null });
+    }
+  },
+  
+  // Optimistic gallery operations
+  addGalleryImageOptimistic: (image) => {
+    const { allGalleryImages, viewerType } = get();
+    const newImages = [...allGalleryImages, image];
+    set({ allGalleryImages: newImages });
+    
+    // If currently viewing gallery, update selected images too
+    if (viewerType === 'gallery') {
+      set({ selectedGalleryImages: newImages });
+    }
+  },
+  
+  removeGalleryImageOptimistic: (imageUrl) => {
+    const { allGalleryImages, viewerType } = get();
+    const newImages = allGalleryImages.filter(img => 
+      img.url !== imageUrl && img.originalUrl !== imageUrl
+    );
+    set({ allGalleryImages: newImages });
+    
+    // If currently viewing gallery, update selected images too
+    if (viewerType === 'gallery') {
+      set({ selectedGalleryImages: newImages });
+    }
+  },
+  
   // Get current items based on viewer type
   getCurrentItems: () => {
     const { selectedFile, selectedGalleryImages, viewerType, allFiles, allGalleryImages } = get();

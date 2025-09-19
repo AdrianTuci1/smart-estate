@@ -4,7 +4,7 @@ import apiService from '../services/api';
 import useFileViewerStore from '../stores/useFileViewerStore';
 
 const PropertyGallery = ({ selectedProperty, onPropertyUpdate, onGalleryOpen }) => {
-  const { updateGalleryImages } = useFileViewerStore();
+  const { updateGalleryImages, addGalleryImageOptimistic, removeGalleryImageOptimistic } = useFileViewerStore();
   const [gallery, setGallery] = useState({ images: [], totalImages: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
@@ -42,10 +42,34 @@ const PropertyGallery = ({ selectedProperty, onPropertyUpdate, onGalleryOpen }) 
 
     setIsUploading(true);
     try {
+      // Optimistic update - add temp images immediately to UI
+      const tempImages = files.map((file, index) => ({
+        id: `temp_${Date.now()}_${index}`,
+        url: URL.createObjectURL(file), // Create preview URL
+        originalUrl: '',
+        alt: `Temp image ${index + 1}`,
+        isTemp: true
+      }));
+      
+      // Add optimistically to local state
+      setGallery(prev => ({
+        ...prev,
+        images: [...prev.images, ...tempImages],
+        totalImages: prev.totalImages + tempImages.length
+      }));
+      
+      // Add optimistically to global store
+      tempImages.forEach(img => addGalleryImageOptimistic(img));
+      
       const response = await apiService.uploadPropertyGalleryImages(selectedProperty.id, files);
       
       if (response.success) {
-        // Reload gallery to show new images
+        // Remove temp images and reload gallery to show real images
+        setGallery(prev => ({
+          ...prev,
+          images: prev.images.filter(img => !img.isTemp)
+        }));
+        
         await loadGallery();
         
         // Notify parent component of property update
@@ -57,9 +81,29 @@ const PropertyGallery = ({ selectedProperty, onPropertyUpdate, onGalleryOpen }) 
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
+      } else {
+        // Remove temp images on failure
+        setGallery(prev => ({
+          ...prev,
+          images: prev.images.filter(img => !img.isTemp),
+          totalImages: prev.totalImages - tempImages.length
+        }));
+        
+        // Clean up object URLs
+        tempImages.forEach(img => URL.revokeObjectURL(img.url));
+        
+        alert('Eroare la încărcarea imaginilor: ' + (response.error || 'Eroare necunoscută'));
       }
     } catch (error) {
       console.error('Error uploading images:', error);
+      
+      // Remove temp images on error
+      setGallery(prev => ({
+        ...prev,
+        images: prev.images.filter(img => !img.isTemp),
+        totalImages: Math.max(0, prev.totalImages - files.length)
+      }));
+      
       alert('Eroare la încărcarea imaginilor: ' + error.message);
     } finally {
       setIsUploading(false);
@@ -70,21 +114,44 @@ const PropertyGallery = ({ selectedProperty, onPropertyUpdate, onGalleryOpen }) 
     if (!selectedProperty?.id) return;
 
     if (confirm('Sigur doriți să ștergeți această imagine?')) {
+      // Store original state for rollback
+      const originalGallery = { ...gallery };
+      
+      // Optimistic update - remove image immediately from UI
+      const newImages = gallery.images.filter(img => 
+        img.url !== imageUrl && img.originalUrl !== imageUrl
+      );
+      setGallery({
+        ...gallery,
+        images: newImages,
+        totalImages: newImages.length
+      });
+      
+      // Update global state optimistically
+      removeGalleryImageOptimistic(imageUrl);
+      
       try {
         setIsLoading(true);
         const response = await apiService.removePropertyImage(selectedProperty.id, imageUrl);
         
         if (response.success) {
-          // Reload gallery
+          // Reload gallery to ensure consistency
           await loadGallery();
           
           // Notify parent component
           if (onPropertyUpdate) {
             onPropertyUpdate(response.data);
           }
+        } else {
+          // Rollback on failure
+          setGallery(originalGallery);
+          // Note: We'd need to restore the image optimistically too
+          alert('Eroare la ștergerea imaginii: ' + response.error);
         }
       } catch (error) {
         console.error('Error deleting image:', error);
+        // Rollback on error
+        setGallery(originalGallery);
         alert('Eroare la ștergerea imaginii: ' + error.message);
       } finally {
         setIsLoading(false);
@@ -104,12 +171,32 @@ const PropertyGallery = ({ selectedProperty, onPropertyUpdate, onGalleryOpen }) 
     if (!selectedImages.length) return;
 
     if (confirm(`Sigur doriți să ștergeți ${selectedImages.length} imagini selectate?`)) {
+      // Store original state for rollback
+      const originalGallery = { ...gallery };
+      const imagesToDelete = selectedImages.map(imageId => 
+        gallery.images.find(img => img.id === imageId)
+      ).filter(Boolean);
+      
+      // Optimistic update - remove selected images immediately from UI
+      const newImages = gallery.images.filter(img => !selectedImages.includes(img.id));
+      setGallery({
+        ...gallery,
+        images: newImages,
+        totalImages: newImages.length
+      });
+      
+      // Update global state optimistically
+      imagesToDelete.forEach(image => {
+        const imageUrl = image.originalUrl || image.url;
+        removeGalleryImageOptimistic(imageUrl);
+      });
+      
       try {
         setIsLoading(true);
         
         // Delete each selected image
         for (const imageId of selectedImages) {
-          const image = gallery.images.find(img => img.id === imageId);
+          const image = originalGallery.images.find(img => img.id === imageId);
           if (image) {
             // Use originalUrl if available (for gallery images), otherwise use url
             const imageUrl = image.originalUrl || image.url;
@@ -117,12 +204,14 @@ const PropertyGallery = ({ selectedProperty, onPropertyUpdate, onGalleryOpen }) 
           }
         }
         
-        // Reload gallery
+        // Reload gallery to ensure consistency
         await loadGallery();
         setSelectedImages([]);
         
       } catch (error) {
         console.error('Error deleting images:', error);
+        // Rollback on error
+        setGallery(originalGallery);
         alert('Eroare la ștergerea imaginilor: ' + error.message);
       } finally {
         setIsLoading(false);

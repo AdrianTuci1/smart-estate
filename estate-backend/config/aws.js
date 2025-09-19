@@ -29,11 +29,12 @@ const s3Utils = {
       Key: key,
       Body: file,
       ContentType: contentType
-      // ACL removed - using bucket policy instead for public access
+      // Remove ACL - will use presigned URLs instead
     };
 
     try {
       const result = await s3.upload(params).promise();
+      console.log('S3 upload successful:', result.Location);
       return {
         success: true,
         url: result.Location,
@@ -88,6 +89,26 @@ const s3Utils = {
     };
 
     return s3.getSignedUrl('getObject', params);
+  },
+
+  // Copy file within S3
+  copyFile: async (sourceKey, destinationKey) => {
+    const params = {
+      Bucket: S3_CONFIG.BUCKET_NAME,
+      CopySource: `${S3_CONFIG.BUCKET_NAME}/${sourceKey}`,
+      Key: destinationKey
+    };
+
+    try {
+      await s3.copyObject(params).promise();
+      return { success: true };
+    } catch (error) {
+      console.error('S3 copy error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   },
 
   // List files in a directory

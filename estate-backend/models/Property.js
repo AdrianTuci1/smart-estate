@@ -8,7 +8,8 @@ class Property {
     this.address = data.address;
     this.status = data.status || 'in-constructie'; // finalizat, in-constructie
     this.companyId = data.companyId;
-    this.images = data.images || []; // Array of S3 URLs
+    this.images = data.images || []; // Array of S3 URLs for gallery
+    this.mainImage = data.mainImage || null; // Main image/logo URL
     this.description = data.description || '';
     this.coordinates = data.coordinates || null; // { lat: number, lng: number }
     this.files = data.files || []; // Array of file references

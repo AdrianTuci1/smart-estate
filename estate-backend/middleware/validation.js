@@ -89,7 +89,8 @@ const schemas = {
     address: Joi.string().min(5).max(200).required(),
     status: Joi.string().valid('finalizată', 'în construcție', 'finalizat', 'in-constructie').default('în construcție'),
     description: Joi.string().max(2000).optional().allow(''),
-    image: Joi.string().uri().optional().allow(''),
+    image: Joi.string().optional().allow(''), // Can be URI or base64
+    mainImage: Joi.string().uri().optional().allow(''), // Main image/logo URL
     roomNumber: Joi.string().max(20).optional().allow(''),
     price: Joi.number().positive().optional().allow(null),
     rooms: Joi.number().integer().min(1).max(10).optional().allow(null),

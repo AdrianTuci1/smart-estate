@@ -1,0 +1,108 @@
+/* Custom Property Markers Styles */
+.property-marker {
+  position: relative;
+  z-index: 1000;
+}
+
+.property-marker.selected {
+  z-index: 1001;
+}
+
+.marker-content {
+  transition: all 0.2s ease;
+}
+
+.marker-content:hover {
+  transform: scale(1.05) !important;
+}
+
+.property-marker.selected .marker-content {
+  transform: scale(1.05) !important;
+}
+
+.marker-image {
+  transition: all 0.2s ease;
+}
+
+.marker-image img {
+  transition: all 0.2s ease;
+}
+
+.marker-title {
+  transition: all 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+.marker-pin {
+  transition: all 0.2s ease;
+}
+
+/* Animation for marker appearance */
+@keyframes markerAppear {
+  0% {
+    transform: scale(0) translateY(-20px);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) translateY(-10px);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.property-marker {
+  animation: markerAppear 0.3s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .marker-image {
+    width: 36px !important;
+    height: 36px !important;
+    border-width: 2px !important;
+  }
+  
+  .marker-title {
+    font-size: 9px !important;
+    padding: 2px 4px !important;
+    max-width: 80px !important;
+  }
+  
+  .marker-pin {
+    width: 10px !important;
+    height: 10px !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .marker-image {
+    border-width: 3px !important;
+  }
+  
+  .marker-title {
+    font-weight: 700 !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .marker-content,
+  .marker-image,
+  .marker-image img,
+  .marker-title,
+  .marker-pin {
+    transition: none !important;
+  }
+  
+  .property-marker {
+    animation: none !important;
+  }
+  
+  .marker-content:hover {
+    transform: none !important;
+  }
+}

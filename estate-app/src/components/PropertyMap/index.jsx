@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
-import { MapPin, Home, Construction, Eye, EyeOff, Plus, X, Users } from 'lucide-react';
+import { GoogleMap, useJsApiLoader } from '@react-google-maps/api';
 import useAppStore from '../../stores/useAppStore';
 import apiService from '../../services/api';
 import { mapStyles, mapStylesWithPOIs } from './mapStyles';
@@ -9,6 +8,8 @@ import AddPropertyButton from './AddPropertyButton';
 import AddPropertyInstructions from './AddPropertyInstructions';
 import ErrorOverlay from './ErrorOverlay';
 import LoadingSpinner from './LoadingSpinner';
+import WorkingClusterManager from './WorkingClusterManager';
+import './CustomMarkers.css';
 
 const PropertyMap = () => {
   const { 
@@ -23,7 +24,7 @@ const PropertyMap = () => {
     saveMapView 
   } = useAppStore();
   
-  const [selectedMarker, setSelectedMarker] = useState(null);
+  // Remove selectedMarker state - we'll use selectedProperty directly
   const [map, setMap] = useState(null);
   const [showPOIs, setShowPOIs] = useState(false);
   const [properties, setProperties] = useState([]);
@@ -66,16 +67,19 @@ const PropertyMap = () => {
       const response = await apiService.getProperties();
       
       if (response.success && response.data) {
-        // Convert coordinates to position for map display and ensure name field
-        const propertiesWithPosition = response.data.map(property => ({
-          ...property,
-          name: property.name || property.address || 'Proprietate fără nume',
-          position: property.coordinates || property.position || null
-        })).filter(property => property.position); // Only show properties with coordinates
         
+        // Convert coordinates to position for map display and ensure name field
+        const propertiesWithPosition = response.data.map(property => {
+          return {
+            ...property,
+            name: property.name || property.address || 'Proprietate fără nume',
+            position: property.coordinates || property.position || null
+          };
+        }).filter(property => property.position); // Only show properties with coordinates
+        
+       
         setProperties(propertiesWithPosition);
       } else {
-        // No properties available
         setProperties([]);
       }
     } catch (err) {
@@ -94,18 +98,7 @@ const PropertyMap = () => {
     loadMapView();
   }, []);
 
-  // Sync marker selection with drawer state
-  useEffect(() => {
-    // If drawer is closed and we have a selected marker, clear it
-    if (!isDrawerOpen && selectedMarker) {
-      setSelectedMarker(null);
-    }
-    
-    // If drawer is open with a property but no marker selected, select the marker
-    if (isDrawerOpen && selectedProperty && !selectedMarker) {
-      setSelectedMarker(selectedProperty);
-    }
-  }, [isDrawerOpen, selectedProperty, selectedMarker]);
+  // No need to sync marker selection - ClusterMarkerManager handles this directly with selectedProperty
 
   // Update map center and zoom when mapCenter or mapZoom state changes
   useEffect(() => {
@@ -130,6 +123,7 @@ const PropertyMap = () => {
   // Reset adding property state when drawer is closed and reload properties
   useEffect(() => {
     if (!isDrawerOpen) {
+      console.log('PropertyMap: Drawer closed, reloading properties');
       setIsAddingProperty(false);
       setNewPropertyPosition(null);
       setNewPropertyAddress('');
@@ -200,13 +194,8 @@ const PropertyMap = () => {
   }, [map, setMapView, saveMapView]);
 
   const handleMarkerClick = (property) => {
-    setSelectedMarker(property);
+    // Just select the property - this will color the marker differently
     selectProperty(property);
-  };
-
-  const handleMarkerClose = () => {
-    setSelectedMarker(null);
-    closeDrawer(); // Close drawer when marker selection is closed
   };
 
   // Reverse geocoding function to get address from coordinates
@@ -272,21 +261,9 @@ const PropertyMap = () => {
 
     // Enter adding mode
     setIsAddingProperty(true);
-    setSelectedMarker(null);
     closeDrawer();
   };
 
-  const getMarkerIcon = (status) => {
-    const color = status === 'finalizată' ? '#10b981' : '#f59e0b';
-    return {
-      path: 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z',
-      fillColor: color,
-      fillOpacity: 1,
-      strokeColor: '#ffffff',
-      strokeWeight: 2,
-      scale: 1.5
-    };
-  };
 
   if (loadError) {
     return (
@@ -331,67 +308,13 @@ const PropertyMap = () => {
           clickableIcons: !isAddingProperty // Disable POI clicks when adding property
         }}
       >
-        {properties.map((property) => (
-          <Marker
-            key={property.id}
-            position={property.position}
-            icon={getMarkerIcon(property.status)}
-            onClick={() => handleMarkerClick(property)}
-          />
-        ))}
-
-
-        {selectedMarker && (
-          <InfoWindow
-            position={selectedMarker.position}
-            onCloseClick={handleMarkerClose}
-          >
-            <div className="p-2 max-w-xs">
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0">
-                  {selectedMarker.leadData ? (
-                    <Users className="h-5 w-5 text-blue-600" />
-                  ) : selectedMarker.status === 'finalizată' ? (
-                    <Home className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <Construction className="h-5 w-5 text-amber-600" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-medium text-gray-900 truncate">
-                    {selectedMarker.leadData ? selectedMarker.name : selectedMarker.name}
-                  </h3>
-                  {selectedMarker.leadData ? (
-                    <div className="text-xs text-gray-500 mt-1">
-                      <p className="text-gray-600">Proprietate: {selectedMarker.address}</p>
-                      <p className="text-gray-400">Lead asociat: {selectedMarker.leadData.name} ({selectedMarker.leadData.phone})</p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-500 mt-1">
-                      {selectedMarker.address}
-                    </p>
-                  )}
-                  <div className="mt-2">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedMarker.leadData
-                        ? 'bg-blue-100 text-blue-800'
-                        : selectedMarker.status === 'finalizată'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {selectedMarker.leadData 
-                        ? 'Proprietate cu Lead' 
-                        : selectedMarker.status === 'finalizată' 
-                        ? 'Finalizată' 
-                        : 'În construcție'
-                      }
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </InfoWindow>
-        )}
+        <WorkingClusterManager
+          map={map}
+          properties={properties}
+          selectedProperty={selectedProperty}
+          onMarkerClick={handleMarkerClick}
+          zoom={zoom}
+        />
       </GoogleMap>
 
       <AddPropertyButton

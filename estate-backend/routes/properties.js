@@ -89,9 +89,37 @@ router.get('/', asyncHandler(async (req, res) => {
     });
   }
 
+  // Generate presigned URLs for main images
+  const processedProperties = await Promise.all(result.data.map(async (property) => {
+    if (property.mainImage) {
+      try {
+        // Extract S3 key from URL
+        const urlParts = property.mainImage.split('/');
+        const s3Key = urlParts.slice(3).join('/'); // Remove protocol, domain, bucket parts
+        
+        // Generate presigned URL for secure access (24 hours)
+        const presignedUrl = s3Utils.generatePresignedDownloadUrl(s3Key, 86400);
+        
+        return {
+          ...property,
+          mainImage: presignedUrl
+        };
+      } catch (error) {
+        console.error('Error generating presigned URL for mainImage:', error);
+        return property;
+      }
+    }
+    return property;
+  }));
+
+  // Log properties with main images for debugging
+  const propertiesWithMainImages = processedProperties.filter(prop => prop.mainImage);
+  const propertiesWithGalleryImages = processedProperties.filter(prop => prop.images && prop.images.length > 0);
+  console.log(`GET /properties - Returning ${processedProperties.length} properties, ${propertiesWithMainImages.length} with main images, ${propertiesWithGalleryImages.length} with gallery images`);
+
   res.json({
     success: true,
-    data: result.data,
+    data: processedProperties,
     pagination: {
       page: parseInt(page),
       limit: parseInt(limit),
@@ -130,9 +158,26 @@ router.get('/:id', asyncHandler(async (req, res) => {
     });
   }
 
+  // Generate presigned URL for main image if exists
+  let processedProperty = result.data;
+  if (processedProperty.mainImage) {
+    try {
+      const urlParts = processedProperty.mainImage.split('/');
+      const s3Key = urlParts.slice(3).join('/');
+      const presignedUrl = s3Utils.generatePresignedDownloadUrl(s3Key, 86400);
+      
+      processedProperty = {
+        ...processedProperty,
+        mainImage: presignedUrl
+      };
+    } catch (error) {
+      console.error('Error generating presigned URL for single property mainImage:', error);
+    }
+  }
+
   res.json({
     success: true,
-    data: result.data
+    data: processedProperty
   });
 }));
 
@@ -150,6 +195,49 @@ router.post('/', validate(schemas.property), asyncHandler(async (req, res) => {
     propertyData.coordinates = propertyData.position;
   }
 
+  console.log('POST /properties - Request body image field:', {
+    hasImage: !!propertyData.image,
+    imageType: propertyData.image ? (propertyData.image.startsWith('data:image/') ? 'base64' : 'other') : 'none',
+    imageLength: propertyData.image ? propertyData.image.length : 0
+  });
+
+  // Process base64 image if provided
+  if (propertyData.image && propertyData.image.startsWith('data:image/')) {
+    console.log('POST /properties - Processing base64 image for new property');
+    try {
+      // Extract base64 data
+      const base64Data = propertyData.image.split(',')[1];
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      
+      // Determine file extension from mime type
+      const mimeType = propertyData.image.split(',')[0].split(':')[1].split(';')[0];
+      const fileExtension = mimeType.split('/')[1];
+      
+      // Generate S3 key for the image
+      const s3Key = `properties/temp-${Date.now()}/main-image.${fileExtension}`;
+      
+      // Upload image to S3
+      const uploadResult = await s3Utils.uploadFile(
+        imageBuffer,
+        s3Key,
+        mimeType
+      );
+
+      if (uploadResult.success) {
+        // Set as main image/logo, not in gallery images
+        propertyData.mainImage = uploadResult.url;
+        console.log('Property main image uploaded to S3:', uploadResult.url);
+      } else {
+        console.error('Failed to upload property main image:', uploadResult.error);
+      }
+    } catch (error) {
+      console.error('Error processing property image:', error);
+    }
+    
+    // Remove the base64 image field as we've processed it
+    delete propertyData.image;
+  }
+
   const result = await Property.create(propertyData);
   
   if (!result.success) {
@@ -158,6 +246,54 @@ router.post('/', validate(schemas.property), asyncHandler(async (req, res) => {
       error: result.error
     });
   }
+
+  // Update S3 key with actual property ID for main image
+  if (result.data.mainImage && result.data.mainImage.includes('temp-')) {
+    console.log('POST /properties - Reorganizing main image from temp location');
+    try {
+      const oldUrl = result.data.mainImage;
+      const urlParts = oldUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      const newS3Key = `properties/${result.data.id}/main-image/${fileName}`;
+      
+      console.log('POST /properties - Copying from:', urlParts.slice(3).join('/'), 'to:', newS3Key);
+      
+      // Copy to new location
+      const copyResult = await s3Utils.copyFile(
+        urlParts.slice(3).join('/'), // old key
+        newS3Key // new key
+      );
+      
+      if (copyResult.success) {
+        console.log('POST /properties - Copy successful, deleting old file and updating property');
+        // Delete old file
+        await s3Utils.deleteFile(urlParts.slice(3).join('/'));
+        
+        // Update property with new URL
+        const newUrl = oldUrl.replace(/properties\/temp-\d+\//, `properties/${result.data.id}/main-image/`);
+        const property = new Property(result.data);
+        const updateResult = await property.update({ mainImage: newUrl });
+        
+        if (updateResult.success) {
+          result.data.mainImage = newUrl;
+          console.log('POST /properties - Main image reorganized successfully:', newUrl);
+        } else {
+          console.error('POST /properties - Failed to update property with new mainImage URL:', updateResult.error);
+        }
+      } else {
+        console.error('POST /properties - Failed to copy main image:', copyResult.error);
+      }
+    } catch (error) {
+      console.error('Error organizing uploaded main image:', error);
+    }
+  }
+
+  console.log('POST /properties - Returning property data:', {
+    id: result.data.id,
+    name: result.data.name,
+    mainImage: result.data.mainImage,
+    hasImages: !!(result.data.images && result.data.images.length > 0)
+  });
 
   res.status(201).json({
     success: true,
@@ -192,6 +328,43 @@ router.put('/:id', validate(schemas.property), asyncHandler(async (req, res) => 
   const updateData = { ...req.body };
   if (updateData.position && !updateData.coordinates) {
     updateData.coordinates = updateData.position;
+  }
+
+  // Process base64 image if provided
+  if (updateData.image && updateData.image.startsWith('data:image/')) {
+    console.log('PUT /properties/:id - Processing base64 image for property update');
+    try {
+      // Extract base64 data
+      const base64Data = updateData.image.split(',')[1];
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+      
+      // Determine file extension from mime type
+      const mimeType = updateData.image.split(',')[0].split(':')[1].split(';')[0];
+      const fileExtension = mimeType.split('/')[1];
+      
+      // Generate S3 key for the image
+      const s3Key = `properties/${id}/images/main-image-${Date.now()}.${fileExtension}`;
+      
+      // Upload image to S3
+      const uploadResult = await s3Utils.uploadFile(
+        imageBuffer,
+        s3Key,
+        mimeType
+      );
+
+      if (uploadResult.success) {
+        // Set as main image/logo, not in gallery images
+        updateData.mainImage = uploadResult.url;
+        console.log('Property main image updated and uploaded to S3:', uploadResult.url);
+      } else {
+        console.error('Failed to upload updated property main image:', uploadResult.error);
+      }
+    } catch (error) {
+      console.error('Error processing updated property image:', error);
+    }
+    
+    // Remove the base64 image field as we've processed it
+    delete updateData.image;
   }
 
   const property = new Property(getResult.data);
