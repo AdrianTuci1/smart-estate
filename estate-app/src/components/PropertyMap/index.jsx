@@ -8,7 +8,7 @@ import AddPropertyButton from './AddPropertyButton';
 import AddPropertyInstructions from './AddPropertyInstructions';
 import ErrorOverlay from './ErrorOverlay';
 import LoadingSpinner from './LoadingSpinner';
-import WorkingClusterManager from './WorkingClusterManager';
+import EfficientClusterManager from './EfficientClusterManager';
 import './CustomMarkers.css';
 
 const PropertyMap = () => {
@@ -308,7 +308,7 @@ const PropertyMap = () => {
           clickableIcons: !isAddingProperty // Disable POI clicks when adding property
         }}
       >
-        <WorkingClusterManager
+        <EfficientClusterManager
           map={map}
           properties={properties}
           selectedProperty={selectedProperty}
