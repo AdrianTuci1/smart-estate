@@ -69,7 +69,7 @@ const WorkingClusterManager = ({
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     `;
 
     const imageUrl = property.mainImage || '/smartes.png';
