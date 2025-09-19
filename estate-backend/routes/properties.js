@@ -3,7 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const router = express.Router();
 const Property = require('../models/Property');
-const { authenticateToken, requireCompanyAccess } = require('../middleware/auth');
+const { authenticateToken, requireCompanyAccess, hasPermission } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { s3Utils, S3_CONFIG } = require('../config/aws');
@@ -183,8 +183,15 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
 // @route   POST /api/properties
 // @desc    Create new property
-// @access  Private
+// @access  Private (Admin, Moderator, PowerUser)
 router.post('/', validate(schemas.property), asyncHandler(async (req, res) => {
+  // Check if user can manage properties
+  if (!hasPermission(req.user.role, 'manage_properties')) {
+    return res.status(403).json({
+      success: false,
+      error: 'Insufficient permissions to create properties'
+    });
+  }
   const propertyData = {
     ...req.body,
     companyId: req.user.companyId
@@ -303,8 +310,15 @@ router.post('/', validate(schemas.property), asyncHandler(async (req, res) => {
 
 // @route   PUT /api/properties/:id
 // @desc    Update property
-// @access  Private
+// @access  Private (Admin, Moderator, PowerUser)
 router.put('/:id', validate(schemas.property), asyncHandler(async (req, res) => {
+  // Check if user can manage properties
+  if (!hasPermission(req.user.role, 'manage_properties')) {
+    return res.status(403).json({
+      success: false,
+      error: 'Insufficient permissions to update properties'
+    });
+  }
   const { id } = req.params;
 
   // First, get the property to check ownership
@@ -385,8 +399,15 @@ router.put('/:id', validate(schemas.property), asyncHandler(async (req, res) => 
 
 // @route   DELETE /api/properties/:id
 // @desc    Delete property
-// @access  Private
+// @access  Private (Admin, Moderator, PowerUser)
 router.delete('/:id', asyncHandler(async (req, res) => {
+  // Check if user can manage properties
+  if (!hasPermission(req.user.role, 'manage_properties')) {
+    return res.status(403).json({
+      success: false,
+      error: 'Insufficient permissions to delete properties'
+    });
+  }
   const { id } = req.params;
 
   // First, get the property to check ownership

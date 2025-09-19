@@ -105,7 +105,9 @@ const CompanySetup = ({ onBack, onCompanyCreated }) => {
             token,
             companyAlias: company.alias,
             username: adminUser.username,
-            user: adminUser,
+            role: adminUser.role,
+            id: adminUser.id,
+            companyId: adminUser.companyId,
             company: company
           });
         }, 2000);

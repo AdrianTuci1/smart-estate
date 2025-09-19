@@ -5,7 +5,7 @@ import useSearchStore from './stores/useSearchStore';
 import useFileViewerStore from './stores/useFileViewerStore';
 import LoginForm from './components/LoginForm';
 import CompanySetup from './components/CompanySetup';
-import UserManagement from './components/UserManagement';
+import AdminSettings from './components/AdminSettings';
 import NavigationDock from './components/NavigationDock';
 import PropertyMap from './components/PropertyMap';
 import PropertyDrawer from './components/PropertyDrawer';
@@ -94,8 +94,8 @@ const AppContent = () => {
       <main className="flex-1 relative overflow-hidden">
         {activeView === 'map' ? (
           <PropertyMap />
-        ) : activeView === 'users' ? (
-          <UserManagement />
+        ) : activeView === 'settings' ? (
+          <AdminSettings />
         ) : (
           <PropertiesList 
             onPropertySelect={handlePropertySelect} 

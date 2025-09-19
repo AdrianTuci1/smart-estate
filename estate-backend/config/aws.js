@@ -13,6 +13,9 @@ const ses = new AWS.SES();
 const textract = new AWS.Textract({
   apiVersion: '2018-06-27'
 });
+const dynamodb = new AWS.DynamoDB({
+  apiVersion: '2012-08-10'
+});
 
 // S3 Configuration
 const S3_CONFIG = {
@@ -278,6 +281,7 @@ module.exports = {
   s3,
   ses,
   textract,
+  dynamodb,
   AWS,
   S3_CONFIG,
   s3Utils,

@@ -56,6 +56,14 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
+// Role hierarchy: admin > Moderator > PowerUser > User
+const ROLE_HIERARCHY = {
+  'admin': 4,
+  'Moderator': 3,
+  'PowerUser': 2,
+  'User': 1
+};
+
 // Middleware to check if user has admin role
 const requireAdmin = (req, res, next) => {
   if (req.user.role !== 'admin') {
@@ -65,6 +73,58 @@ const requireAdmin = (req, res, next) => {
     });
   }
   next();
+};
+
+// Middleware to check if user has moderator or higher role
+const requireModerator = (req, res, next) => {
+  const userRoleLevel = ROLE_HIERARCHY[req.user.role] || 0;
+  if (userRoleLevel < ROLE_HIERARCHY['Moderator']) {
+    return res.status(403).json({ 
+      success: false, 
+      error: 'Moderator access required' 
+    });
+  }
+  next();
+};
+
+// Middleware to check if user has power user or higher role
+const requirePowerUser = (req, res, next) => {
+  const userRoleLevel = ROLE_HIERARCHY[req.user.role] || 0;
+  if (userRoleLevel < ROLE_HIERARCHY['PowerUser']) {
+    return res.status(403).json({ 
+      success: false, 
+      error: 'PowerUser access required' 
+    });
+  }
+  next();
+};
+
+// Helper function to check if user can modify another user's role
+const canModifyUserRole = (currentUserRole, targetUserRole) => {
+  const currentLevel = ROLE_HIERARCHY[currentUserRole] || 0;
+  const targetLevel = ROLE_HIERARCHY[targetUserRole] || 0;
+  
+  // Admins can modify anyone (including other admins)
+  if (currentUserRole === 'admin') {
+    return true;
+  }
+  
+  // Other roles can only modify users with lower role level
+  return currentLevel > targetLevel;
+};
+
+// Helper function to check if user can access certain features
+const hasPermission = (userRole, permission) => {
+  const roleLevel = ROLE_HIERARCHY[userRole] || 0;
+  
+  const permissions = {
+    'manage_users': ['admin', 'Moderator'],
+    'manage_properties': ['admin', 'Moderator', 'PowerUser'],
+    'view_all_data': ['admin', 'Moderator', 'PowerUser'],
+    'change_passwords': ['admin', 'Moderator']
+  };
+  
+  return permissions[permission]?.includes(userRole) || false;
 };
 
 // Middleware to ensure user can only access their company's data
@@ -129,7 +189,12 @@ const optionalAuth = async (req, res, next) => {
 module.exports = {
   authenticateToken,
   requireAdmin,
+  requireModerator,
+  requirePowerUser,
   requireCompanyAccess,
   generateToken,
-  optionalAuth
+  optionalAuth,
+  canModifyUserRole,
+  hasPermission,
+  ROLE_HIERARCHY
 };

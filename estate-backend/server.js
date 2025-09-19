@@ -12,6 +12,8 @@ const propertyRoutes = require('./routes/properties');
 const searchRoutes = require('./routes/search');
 const companyRoutes = require('./routes/companies');
 const userRoutes = require('./routes/users');
+const googleSheetsRoutes = require('./routes/googleSheets');
+const propertyGoogleSheetsRoutes = require('./routes/propertyGoogleSheets');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -60,6 +62,8 @@ app.use('/api/properties', propertyRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/google-sheets', googleSheetsRoutes);
+app.use('/api/properties/:propertyId/google-sheets', propertyGoogleSheetsRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -73,6 +77,8 @@ app.get('/', (req, res) => {
       search: '/api/search',
       companies: '/api/companies',
       users: '/api/users',
+      googleSheets: '/api/google-sheets',
+      propertyGoogleSheets: '/api/properties/:propertyId/google-sheets',
       health: '/health'
     }
   });

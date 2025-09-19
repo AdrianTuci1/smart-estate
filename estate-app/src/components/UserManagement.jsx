@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, UserPlus, Edit, Trash2, Shield, Users, Eye, EyeOff } from 'lucide-react';
+import { User, UserPlus, Edit, Trash2, Shield, Users, UserCog, Eye, EyeOff, Lock, X } from 'lucide-react';
 import apiService from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -8,12 +8,12 @@ const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    role: 'agent'
+    role: 'User'
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,8 +102,19 @@ const UserManagement = () => {
     }
   };
 
-  const handleDelete = async (userId, username) => {
-    if (!confirm(`Ești sigur că vrei să ștergi utilizatorul "${username}"?`)) {
+  const handleDelete = async (userId, username, userRole) => {
+    // Prevent deleting self
+    if (userId === user?.id) {
+      setError('Nu poți șterge propriul cont');
+      return;
+    }
+    
+    // Show different confirmation messages for different roles
+    const confirmMessage = userRole === 'admin' 
+      ? `Ești sigur că vrei să ștergi administratorul "${username}"? Această acțiune este ireversibilă!`
+      : `Ești sigur că vrei să ștergi utilizatorul "${username}"?`;
+    
+    if (!confirm(confirmMessage)) {
       return;
     }
 
@@ -124,54 +135,57 @@ const UserManagement = () => {
     setFormData({
       username: '',
       password: '',
-      role: 'agent'
+      role: 'User'
     });
     setEditingUser(null);
-    setShowCreateForm(false);
+    setShowCreateDrawer(false);
     setError('');
   };
 
   const startEdit = (userData) => {
+    // Prevent editing self
+    if (userData.id === user?.id) {
+      setError('Nu poți edita propriul cont');
+      return;
+    }
+    
     setFormData({
       username: userData.username,
       password: '',
       role: userData.role
     });
     setEditingUser(userData);
-    setShowCreateForm(true);
+    setShowCreateDrawer(true);
   };
 
-  if (user?.role !== 'admin') {
+  if (user?.role !== 'admin' && user?.role !== 'Moderator') {
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
-          <p>Accesul este restricționat. Doar administratorii pot gestiona utilizatorii.</p>
+          <p>Accesul este restricționat. Doar administratorii și moderatorii pot gestiona utilizatorii.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-              <Users className="h-6 w-6 mr-2" />
-              Gestionare Utilizatori
-            </h2>
-            <p className="text-gray-600 mt-1">
-              Gestionează utilizatorii companiei tale
-            </p>
-          </div>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="btn btn-primary flex items-center"
-          >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Adaugă Utilizator
-          </button>
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Lista Utilizatori
+          </h3>
+          <p className="text-gray-600 text-sm mt-1">
+            {users.length} utilizatori în sistem
+          </p>
         </div>
+        <button
+          onClick={() => setShowCreateDrawer(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200"
+        >
+          <UserPlus className="h-4 w-4" />
+          <span>Adaugă Utilizator</span>
+        </button>
       </div>
 
       {error && (
@@ -180,110 +194,136 @@ const UserManagement = () => {
         </div>
       )}
 
-      {/* Create/Edit Form */}
-      {showCreateForm && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            {editingUser ? 'Editează Utilizator' : 'Utilizator Nou'}
-          </h3>
+      {/* User Management Drawer */}
+      {showCreateDrawer && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={resetForm}
+          />
           
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nume Utilizator
-                </label>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  className="input w-full"
-                  placeholder="ex: john.doe"
-                  value={formData.username}
-                  onChange={handleChange}
-                />
+          {/* Drawer */}
+          <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {editingUser ? 'Editează Utilizator' : 'Utilizator Nou'}
+                  </h3>
+                  <button
+                    onClick={resetForm}
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+                  >
+                    <X className="h-5 w-5 text-gray-500" />
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
-                  Rol
-                </label>
-                <select
-                  id="role"
-                  name="role"
-                  className="input w-full"
-                  value={formData.role}
-                  onChange={handleChange}
-                >
-                  <option value="agent">Agent</option>
-                  <option value="admin">Administrator</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Parolă {editingUser && <span className="text-gray-500">(lasă gol pentru a păstra parola actuală)</span>}
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  className="input w-full pr-10"
-                  placeholder={editingUser ? 'Parolă nouă (opțional)' : 'Parola'}
-                  value={formData.password}
-                  onChange={handleChange}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="btn btn-primary"
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Se salvează...
+              {/* Form */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="space-y-6">
+                  <div>
+                    <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                      Nume Utilizator
+                    </label>
+                    <input
+                      id="username"
+                      name="username"
+                      type="text"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="ex: john.doe"
+                      value={formData.username}
+                      onChange={handleChange}
+                    />
                   </div>
-                ) : (
-                  editingUser ? 'Actualizează' : 'Creează'
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="btn btn-secondary"
-              >
-                Anulează
-              </button>
+
+                  <div>
+                    <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+                      Rol
+                    </label>
+                    <select
+                      id="role"
+                      name="role"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      value={formData.role}
+                      onChange={handleChange}
+                    >
+                      <option value="User">User</option>
+                      <option value="PowerUser">PowerUser</option>
+                      {(user?.role === 'admin') && (
+                        <option value="Moderator">Moderator</option>
+                      )}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                      Parolă {editingUser && <span className="text-gray-500 text-sm">(lasă gol pentru a păstra parola actuală)</span>}
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="password"
+                        name="password"
+                        type={showPassword ? 'text' : 'password'}
+                        className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder={editingUser ? 'Parolă nouă (opțional)' : 'Parola'}
+                        value={formData.password}
+                        onChange={handleChange}
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                        ) : (
+                          <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                <div className="flex space-x-3">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }}
+                    disabled={isSubmitting}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors duration-200"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Se salvează...</span>
+                      </>
+                    ) : (
+                      <span>{editingUser ? 'Actualizează' : 'Creează'}</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={resetForm}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    Anulează
+                  </button>
+                </div>
+              </div>
             </div>
-          </form>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Users List */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Utilizatori ({users.length})
-          </h3>
-        </div>
 
         {isLoading ? (
           <div className="p-6 text-center">
@@ -291,20 +331,26 @@ const UserManagement = () => {
             <p className="text-gray-500 mt-2">Se încarcă utilizatorii...</p>
           </div>
         ) : users.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
-            <User className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-            <p>Nu există utilizatori încă</p>
-            <p className="text-sm">Creează primul utilizator pentru a începe</p>
+          <div className="p-8 text-center text-gray-500">
+            <div className="bg-gray-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <User className="h-8 w-8 text-gray-400" />
+            </div>
+            <p className="text-lg font-medium">Nu există utilizatori încă</p>
+            <p className="text-sm text-gray-400 mt-1">Creează primul utilizator pentru a începe</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
             {users.map((userData) => (
-              <div key={userData.id} className="px-6 py-4 flex items-center justify-between">
+              <div key={userData.id} className="px-6 py-5 flex items-center justify-between hover:bg-gray-50 transition-colors duration-200">
                 <div className="flex items-center">
-                  <div className="flex-shrink-0">
+                    <div className="flex-shrink-0">
                     <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
                       {userData.role === 'admin' ? (
                         <Shield className="h-5 w-5 text-primary-600" />
+                      ) : userData.role === 'Moderator' ? (
+                        <UserCog className="h-5 w-5 text-primary-600" />
+                      ) : userData.role === 'PowerUser' ? (
+                        <Users className="h-5 w-5 text-primary-600" />
                       ) : (
                         <User className="h-5 w-5 text-primary-600" />
                       )}
@@ -322,27 +368,45 @@ const UserManagement = () => {
                       )}
                     </div>
                     <p className="text-sm text-gray-500 capitalize">
-                      {userData.role === 'admin' ? 'Administrator' : 'Agent'}
+                      {userData.role === 'admin' ? 'Administrator' : 
+                       userData.role === 'Moderator' ? 'Moderator' :
+                       userData.role === 'PowerUser' ? 'Power User' : 'User'}
                     </p>
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => startEdit(userData)}
-                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                    title="Editează utilizator"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  {userData.id !== user?.id && (
+                <div className="flex items-center space-x-1">
+                  {/* Edit button - admins can edit everyone except self, moderators can edit non-moderators */}
+                  {userData.id !== user?.id && 
+                   ((user?.role === 'admin') || 
+                    (user?.role === 'Moderator' && userData.role !== 'Moderator' && userData.role !== 'admin')) && (
                     <button
-                      onClick={() => handleDelete(userData.id, userData.username)}
-                      className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                      title="Șterge utilizator"
+                      onClick={() => startEdit(userData)}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                      title="Editează utilizator"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                  )}
+                  
+                  {/* Delete button - admins can delete everyone except self, moderators can delete non-moderators */}
+                  {userData.id !== user?.id && 
+                   ((user?.role === 'admin') || 
+                    (user?.role === 'Moderator' && userData.role !== 'Moderator' && userData.role !== 'admin')) && (
+                    <button
+                      onClick={() => handleDelete(userData.id, userData.username, userData.role)}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+                      title={userData.role === 'admin' ? 'Șterge administrator' : 'Șterge utilizator'}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
+                  )}
+                  
+                  {/* Show lock icon only for current user */}
+                  {userData.id === user?.id && (
+                    <div className="p-2 text-gray-300" title="Nu poți edita sau șterge propriul cont">
+                      <Lock className="h-4 w-4" />
+                    </div>
                   )}
                 </div>
               </div>

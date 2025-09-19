@@ -346,6 +346,63 @@ class ApiService {
     });
   }
 
+  // Google Sheets methods
+  async createPropertySpreadsheet(propertyId, title) {
+    return this.request(`/api/properties/${propertyId}/google-sheets`, {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    });
+  }
+
+  async getPropertySpreadsheets(propertyId) {
+    return this.request(`/api/properties/${propertyId}/google-sheets`);
+  }
+
+  async linkSpreadsheetToProperty(propertyId, spreadsheetId, fileName) {
+    return this.request(`/api/properties/${propertyId}/google-sheets/link`, {
+      method: 'POST',
+      body: JSON.stringify({ spreadsheetId, fileName }),
+    });
+  }
+
+  async convertExcelToGoogleSheet(propertyId, file) {
+    const token = localStorage.getItem('authToken');
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${this.baseURL}/api/properties/${propertyId}/google-sheets/convert`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  }
+
+  // Company Google Sheets authorization methods
+  async getCompanyGoogleSheetsAuthUrl() {
+    return this.request('/api/google-sheets/auth/company/url');
+  }
+
+  async handleCompanyGoogleSheetsCallback(code, state) {
+    return this.request('/api/google-sheets/auth/company/callback', {
+      method: 'POST',
+      body: JSON.stringify({ code, state }),
+    });
+  }
+
+  async getCompanyGoogleSheetsAuthStatus() {
+    return this.request('/api/google-sheets/auth/company/status');
+  }
+
   // Health check
   async healthCheck() {
     return this.request('/health');

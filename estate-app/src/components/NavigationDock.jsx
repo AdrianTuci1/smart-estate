@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Map, Users, Search, X, LogOut, ChevronDown, UserCog, Building2 } from 'lucide-react';
+import { Map, Users, Search, X, LogOut, ChevronDown, Building2, Settings } from 'lucide-react';
 import SearchResults from './SearchResults';
 import useAppStore from '../stores/useAppStore';
 import useSearchStore from '../stores/useSearchStore';
@@ -122,15 +122,15 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
           
           {user?.role === 'admin' && (
             <button
-              onClick={() => setActiveView('users')}
+              onClick={() => setActiveView('settings')}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
-                activeView === 'users'
+                activeView === 'settings'
                   ? 'bg-primary text-primary-foreground shadow-lg'
                   : 'bg-white/80 text-muted-foreground hover:bg-white hover:text-foreground'
               }`}
-              title="Gestionare Utilizatori"
+              title="Setări Administrator"
             >
-              <UserCog className="h-5 w-5" />
+              <Settings className="h-5 w-5" />
             </button>
           )}
         </div>

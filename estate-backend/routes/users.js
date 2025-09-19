@@ -2,19 +2,19 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Company = require('../models/Company');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, canModifyUserRole, hasPermission, ROLE_HIERARCHY } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 // @route   GET /api/users
 // @desc    Get users from current company
-// @access  Private (Admin)
+// @access  Private (Admin, Moderator)
 router.get('/', authenticateToken, asyncHandler(async (req, res) => {
-  // Check if user is admin
-  if (req.user.role !== 'admin') {
+  // Check if user can manage users
+  if (!hasPermission(req.user.role, 'manage_users')) {
     return res.status(403).json({
       success: false,
-      error: 'Admin access required'
+      error: 'Insufficient permissions to view users'
     });
   }
 
@@ -33,18 +33,36 @@ router.get('/', authenticateToken, asyncHandler(async (req, res) => {
 }));
 
 // @route   POST /api/users
-// @desc    Create a new user (admin only)
-// @access  Private (Admin)
-router.post('/', authenticateToken, validate(schemas.register), asyncHandler(async (req, res) => {
-  // Check if user is admin
-  if (req.user.role !== 'admin') {
+// @desc    Create a new user (admin, moderator)
+// @access  Private (Admin, Moderator)
+router.post('/', authenticateToken, validate(schemas.createUser), asyncHandler(async (req, res) => {
+  // Check if user can manage users
+  if (!hasPermission(req.user.role, 'manage_users')) {
     return res.status(403).json({
       success: false,
-      error: 'Admin access required'
+      error: 'Insufficient permissions to create users'
     });
   }
 
   const { username, password, role } = req.body;
+
+  // Validate role assignment
+  const validRoles = ['Moderator', 'PowerUser', 'User'];
+  if (role && !validRoles.includes(role)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid role. Must be one of: Moderator, PowerUser, User'
+    });
+  }
+
+  // Check if current user can assign this role
+  const targetRole = role || 'User';
+  if (!canModifyUserRole(req.user.role, targetRole)) {
+    return res.status(403).json({
+      success: false,
+      error: 'Insufficient permissions to assign this role'
+    });
+  }
 
   // Create new user for the same company
   const userData = {
@@ -52,7 +70,7 @@ router.post('/', authenticateToken, validate(schemas.register), asyncHandler(asy
     password,
     companyAlias: req.user.companyAlias,
     companyId: req.user.companyId,
-    role: role || 'agent'
+    role: targetRole
   };
 
   const result = await User.create(userData);
@@ -108,13 +126,16 @@ router.get('/:id', authenticateToken, asyncHandler(async (req, res) => {
 
 // @route   PUT /api/users/:id
 // @desc    Update user
-// @access  Private (Admin or self)
-router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
+// @access  Private (Admin, Moderator or self)
+router.put('/:id', authenticateToken, validate(schemas.updateUser), asyncHandler(async (req, res) => {
   const { id } = req.params;
   const updateData = req.body;
 
-  // Check if user is admin or updating their own data
-  if (req.user.role !== 'admin' && req.user.id !== id) {
+  // Check if user is admin/moderator or updating their own data
+  const canManageUsers = hasPermission(req.user.role, 'manage_users');
+  const isUpdatingSelf = req.user.id === id;
+
+  if (!canManageUsers && !isUpdatingSelf) {
     return res.status(403).json({
       success: false,
       error: 'Access denied'
@@ -131,16 +152,55 @@ router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
   }
 
   // Check if user belongs to the same company
-  if (req.user.role === 'admin' && userResult.data.companyAlias !== req.user.companyAlias) {
+  if (canManageUsers && userResult.data.companyAlias !== req.user.companyAlias) {
     return res.status(403).json({
       success: false,
       error: 'Access denied'
     });
   }
 
-  // Non-admin users can only update certain fields
-  if (req.user.role !== 'admin') {
-    const allowedFields = ['username']; // Add more fields as needed
+  // Handle role updates
+  if (updateData.role && canManageUsers) {
+    // Validate role
+    const validRoles = ['Moderator', 'PowerUser', 'User'];
+    if (!validRoles.includes(updateData.role)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid role. Must be one of: Moderator, PowerUser, User'
+      });
+    }
+
+    // Check if current user can assign this role to target user
+    if (!canModifyUserRole(req.user.role, updateData.role)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Insufficient permissions to assign this role'
+      });
+    }
+
+    // Prevent moderators from promoting users to moderator level
+    if (req.user.role === 'Moderator' && updateData.role === 'Moderator') {
+      return res.status(403).json({
+        success: false,
+        error: 'Cannot promote users to Moderator level'
+      });
+    }
+  } else if (updateData.role && !canManageUsers) {
+    // Remove role from update data if user can't manage roles
+    delete updateData.role;
+  }
+
+  // Handle password updates
+  if (updateData.password && !hasPermission(req.user.role, 'change_passwords') && !isUpdatingSelf) {
+    return res.status(403).json({
+      success: false,
+      error: 'Insufficient permissions to change passwords'
+    });
+  }
+
+  // Non-admin/moderator users can only update certain fields
+  if (!canManageUsers) {
+    const allowedFields = ['username']; // Users can only update their own username
     const filteredData = {};
     Object.keys(updateData).forEach(key => {
       if (allowedFields.includes(key)) {
@@ -168,19 +228,19 @@ router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
 
 // @route   DELETE /api/users/:id
 // @desc    Delete user
-// @access  Private (Admin)
+// @access  Private (Admin, Moderator)
 router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
-  // Check if user is admin
-  if (req.user.role !== 'admin') {
+  // Check if user can manage users
+  if (!hasPermission(req.user.role, 'manage_users')) {
     return res.status(403).json({
       success: false,
-      error: 'Admin access required'
+      error: 'Insufficient permissions to delete users'
     });
   }
 
   const { id } = req.params;
 
-  // Prevent admin from deleting themselves
+  // Prevent user from deleting themselves
   if (req.user.id === id) {
     return res.status(400).json({
       success: false,
@@ -188,7 +248,7 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
     });
   }
 
-  // Get user first to check company
+  // Get user first to check company and role
   const userResult = await User.getById(id);
   if (!userResult.success || !userResult.data) {
     return res.status(404).json({
@@ -202,6 +262,14 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
     return res.status(403).json({
       success: false,
       error: 'Access denied'
+    });
+  }
+
+  // Check if current user can delete the target user based on role hierarchy
+  if (!canModifyUserRole(req.user.role, userResult.data.role)) {
+    return res.status(403).json({
+      success: false,
+      error: 'Insufficient permissions to delete this user'
     });
   }
 

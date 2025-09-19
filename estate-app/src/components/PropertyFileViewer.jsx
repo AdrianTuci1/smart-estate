@@ -4,7 +4,7 @@ import apiService from '../services/api';
 import { handleFileAction } from '../utils/fileHandler';
 import useAppStore from '../stores/useAppStore';
 import useFileViewerStore from '../stores/useFileViewerStore';
-import { DocxViewer, ExcelViewer, PDFViewer, getDocumentViewerType, isDocumentViewable } from './DocumentViewers';
+import { DocxViewer, ExcelViewer, GoogleSheetsViewer, PDFViewer, getDocumentViewerType, isDocumentViewable } from './DocumentViewers';
 
 const PropertyFileViewer = () => {
   const { selectedProperty } = useAppStore();
@@ -88,8 +88,11 @@ const PropertyFileViewer = () => {
       if (viewerType === 'gallery') {
         // For gallery images, use the URL directly
         setViewUrl(currentItem.url);
+      } else if (currentItem.isGoogleSheet || currentItem.type === 'GOOGLE_SHEET') {
+        // For Google Sheets, use the direct Google URL
+        setViewUrl(currentItem.url);
       } else {
-        // For files, get presigned URL
+        // For regular files, get presigned URL
         const response = await apiService.getFileViewUrl(selectedProperty.id, currentItem.id);
         if (response.success) {
           setViewUrl(response.data.viewUrl);
@@ -104,6 +107,11 @@ const PropertyFileViewer = () => {
   const getItemIcon = (item) => {
     if (viewerType === 'gallery') {
       return <ImageIcon className="h-8 w-8 text-blue-500" />;
+    }
+    
+    // Handle Google Sheets specifically
+    if (item.isGoogleSheet || item.type === 'GOOGLE_SHEET') {
+      return <Sheet className="h-8 w-8 text-green-600" />;
     }
     
     const fileName = item.name || item.alt || '';
@@ -393,8 +401,13 @@ const PropertyFileViewer = () => {
               ) : viewUrl ? (
                 // Check if it's a document that can be viewed with our viewers
                 (() => {
-                  const documentType = getDocumentViewerType(currentItem.name);
-                  const isViewable = isDocumentViewable(currentItem.name);
+                  const documentType = getDocumentViewerType(currentItem.name, currentItem.isGoogleSheet);
+                  const isViewable = isDocumentViewable(currentItem.name, currentItem.isGoogleSheet);
+                  
+                  console.log('🔍 PropertyFileViewer - currentItem:', currentItem);
+                  console.log('🔍 PropertyFileViewer - documentType:', documentType);
+                  console.log('🔍 PropertyFileViewer - isViewable:', isViewable);
+                  console.log('🔍 PropertyFileViewer - isGoogleSheet:', currentItem.isGoogleSheet);
                   
                   if (isViewable && documentType) {
                     switch (documentType) {
@@ -414,8 +427,18 @@ const PropertyFileViewer = () => {
                             <ExcelViewer
                               fileUrl={viewUrl}
                               fileName={currentItem.name}
-                              allowEdit={true}
+                              file={currentItem}
                               onError={(error) => console.error('ExcelViewer error:', error)}
+                            />
+                          </div>
+                        );
+                      case 'google-sheets':
+                        console.log('🎯 PropertyFileViewer - Rendering GoogleSheetsViewer with file:', currentItem);
+                        return (
+                          <div className="absolute inset-0">
+                            <GoogleSheetsViewer
+                              file={currentItem}
+                              onClose={closeFileViewer}
                             />
                           </div>
                         );

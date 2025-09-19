@@ -32,6 +32,18 @@ const schemas = {
     role: Joi.string().valid('admin', 'agent').default('agent')
   }),
 
+  createUser: Joi.object({
+    username: Joi.string().min(3).max(50).required(),
+    password: Joi.string().min(6).required(),
+    role: Joi.string().valid('User', 'PowerUser', 'Moderator').default('User')
+  }),
+
+  updateUser: Joi.object({
+    username: Joi.string().min(3).max(50).optional(),
+    password: Joi.string().min(6).optional(),
+    role: Joi.string().valid('User', 'PowerUser', 'Moderator').optional()
+  }),
+
   // Company schemas
   company: Joi.object({
     name: Joi.string().min(2).max(100).required(),

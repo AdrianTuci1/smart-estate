@@ -1,189 +1,135 @@
-import { useState, useEffect } from 'react';
-import * as XLSX from 'xlsx';
-import { Sheet, Download, AlertCircle, Edit3, Eye } from 'lucide-react';
-import SimpleExcelEditor from './SimpleExcelEditor';
-import './DocumentViewers.css';
+import React, { useState } from 'react';
+import { FileSpreadsheet, ExternalLink, RefreshCw } from 'lucide-react';
 
-const ExcelViewer = ({ fileUrl, fileName, onError, allowEdit = true }) => {
-  const [workbook, setWorkbook] = useState(null);
-  const [currentSheet, setCurrentSheet] = useState(0);
-  const [sheetNames, setSheetNames] = useState([]);
+const ExcelViewer = ({ fileUrl, fileName, onError, file }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [tableData, setTableData] = useState([]);
 
-  useEffect(() => {
-    if (fileUrl) {
-      loadExcelContent();
-    }
-  }, [fileUrl]);
-
-  useEffect(() => {
-    if (workbook && sheetNames.length > 0) {
-      generateTableData();
-    }
-  }, [workbook, currentSheet]);
-
-  // Cleanup effect - nu mai e necesar pentru SimpleExcelEditor
-  useEffect(() => {
-    return () => {
-      // Cleanup simplu - doar resetare state
-      setTableData([]);
-      setIsEditMode(false);
-    };
-  }, []);
-
-  const loadExcelContent = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const response = await fetch(fileUrl);
-      if (!response.ok) {
-        throw new Error('Eroare la încărcarea fișierului');
-      }
-      
-      const arrayBuffer = await response.arrayBuffer();
-      const wb = XLSX.read(arrayBuffer, { type: 'array' });
-      
-      setWorkbook(wb);
-      setSheetNames(wb.SheetNames);
-      setCurrentSheet(0);
-    } catch (error) {
-      console.error('Error loading Excel:', error);
-      setError(error.message);
-      if (onError) {
-        onError(error);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+  const handleIframeLoad = () => {
+    setIsLoading(false);
+    setError(null);
   };
 
-  const generateTableData = () => {
-    if (!workbook || !sheetNames[currentSheet]) return;
+  const handleIframeError = () => {
+    setIsLoading(false);
+    setError('Nu s-a putut încărca fișierul în previzualizare.');
+  };
+
+  const openExternal = () => {
+    window.open(fileUrl, '_blank');
+  };
+
+  // All Excel files are converted to Google Sheets, extract spreadsheetId
+  const getSpreadsheetId = () => {
+    // First try the direct spreadsheetId property
+    if (file?.spreadsheetId) {
+      return file.spreadsheetId;
+    }
     
-    const worksheet = workbook.Sheets[sheetNames[currentSheet]];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-      header: 1, 
-      defval: '',
-      raw: false 
-    });
+    // Then try to extract from id with gs_ prefix
+    if (file?.id && file.id.startsWith('gs_')) {
+      return file.id.substring(3); // Remove 'gs_' prefix
+    }
     
-    setTableData(jsonData);
+    // Try to extract from URL
+    if (file?.url) {
+      const urlMatch = file.url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (urlMatch) {
+        return urlMatch[1];
+      }
+    }
+    
+    return null;
   };
 
-  const downloadFile = () => {
-    const link = document.createElement('a');
-    link.href = fileUrl;
-    link.download = fileName || 'spreadsheet.xlsx';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Generate Google Sheets iframe URL
+  const getIframeUrl = () => {
+    const spreadsheetId = getSpreadsheetId();
+    
+    console.log('🔍 ExcelViewer - file:', file);
+    console.log('🔍 ExcelViewer - extracted spreadsheetId:', spreadsheetId);
+    
+    if (!spreadsheetId) {
+      console.error('❌ No spreadsheetId found for Excel file');
+      return null;
+    }
+    
+    // Try different URL formats for Google Sheets embedding
+    const urls = [
+      `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit?usp=sharing&embedded=true&widget=true&headers=false`,
+      `https://docs.google.com/spreadsheets/d/${spreadsheetId}/pubhtml?embedded=true`,
+      `https://docs.google.com/spreadsheets/d/${spreadsheetId}/htmlview?embedded=true`
+    ];
+    
+    const googleUrl = urls[0]; // Use the first URL (edit with sharing)
+    console.log('🔗 Using Google Sheets iframe URL:', googleUrl);
+    return googleUrl;
   };
-
-  const toggleEditMode = () => {
-    if (!allowEdit) return;
-    setIsEditMode(!isEditMode);
-  };
-
-  // Funcție pentru salvarea modificărilor (poate fi extinsă pentru a salva pe server)
-  const handleDataChange = (newData) => {
-    setTableData(newData);
-    console.log('Date Excel modificate:', newData);
-    // TODO: Implementează salvarea pe server aici
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full bg-white">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Se încarcă foaia de calcul...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-full bg-white">
-        <div className="text-center p-8">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Eroare la încărcarea foii de calcul
-          </h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={downloadFile}
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Descarcă fișierul
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="h-full bg-white flex flex-col">
-      {/* Compact Header with Edit Toggle */}
-      <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            {allowEdit && (
-              <button
-                onClick={toggleEditMode}
-                className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors ${
-                  isEditMode 
-                    ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                title={isEditMode ? 'Ieși din modul editare' : 'Intră în modul editare'}
-              >
-                {isEditMode ? (
-                  <>
-                    <Eye className="h-4 w-4 mr-1" />
-                    Previzualizare
-                  </>
-                ) : (
-                  <>
-                    <Edit3 className="h-4 w-4 mr-1" />
-                    Editează
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+    <div className="h-full flex flex-col bg-white">
 
-          {/* Sheet tabs */}
-          {sheetNames.length > 1 && !isEditMode && (
-            <div className="sheet-tabs">
-              {sheetNames.map((name, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentSheet(index)}
-                  className={`sheet-tab ${currentSheet === index ? 'active' : ''}`}
-                >
-                  {name}
-                </button>
-              ))}
+
+      {/* Content */}
+      <div className="flex-1 relative">
+        {/* Loading Overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+            <div className="flex flex-col items-center space-y-4">
+              <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+              <p className="text-gray-600">Se încarcă fișierul...</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-red-500 mb-4">
+                <p className="text-lg font-medium">Eroare la încărcarea fișierului</p>
+                <p className="text-sm">{error}</p>
+              </div>
+              <button
+                onClick={openExternal}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                <ExternalLink className="h-4 w-4 inline mr-2" />
+                Deschide extern
+              </button>
+            </div>
+          </div>
+        ) : getIframeUrl() ? (
+          /* Google Sheets Preview Iframe */
+          <iframe
+            id="excel-iframe"
+            src={getIframeUrl()}
+            className="w-full h-full border-0"
+            onLoad={handleIframeLoad}
+            onError={handleIframeError}
+            title={`Google Sheets Preview - ${fileName || 'File'}`}
+            allowFullScreen
+          />
+        ) : (
+          /* No spreadsheetId available */
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center text-gray-500">
+              <FileSpreadsheet className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium mb-2">Previzualizare indisponibilă</p>
+              <p className="text-sm mb-4">Fișierul nu are spreadsheetId pentru Google Sheets</p>
+              <button
+                onClick={openExternal}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center space-x-2 mx-auto"
+              >
+                <ExternalLink className="h-4 w-4" />
+                <span>Deschide extern</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Content - Folosește SimpleExcelEditor pentru ambele moduri */}
-      <div className="flex-1 overflow-hidden">
-        <SimpleExcelEditor 
-          data={tableData}
-          allowEdit={isEditMode && allowEdit}
-          onDataChange={handleDataChange}
-          readOnly={!isEditMode}
-        />
-      </div>
+
     </div>
   );
 };

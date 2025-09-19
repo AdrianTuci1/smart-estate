@@ -9,7 +9,7 @@ class User {
     this.passwordHash = data.passwordHash;
     this.companyAlias = data.companyAlias?.toLowerCase().trim();
     this.companyId = data.companyId;
-    this.role = data.role || 'agent';
+    this.role = data.role || 'User';
     this.createdAt = data.createdAt || new Date().toISOString();
     this.updatedAt = data.updatedAt || new Date().toISOString();
   }

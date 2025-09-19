@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect } from 'react';
 import { Building2, MapPin, Plus, Eye, FileText, Users, FileImage } from 'lucide-react';
 import apiService from '../services/api';
 import useAppStore from '../stores/useAppStore';
+import { useAuth } from '../contexts/AuthContext';
 
 const PropertiesList = ({ searchTerm = '' }) => {
+  const { user } = useAuth();
   const { 
     selectProperty, 
     setDrawerOpen, 
@@ -85,6 +87,12 @@ const PropertiesList = ({ searchTerm = '' }) => {
   };
 
   const handleCreateProperty = () => {
+    // Check if user can manage properties
+    const canManageProperties = ['admin', 'Moderator', 'PowerUser'].includes(user?.role);
+    if (!canManageProperties) {
+      setError('Nu aveți permisiuni pentru a crea proprietăți. Contactați administratorul.');
+      return;
+    }
     setDrawerOpen(true);
   };
 
@@ -122,13 +130,15 @@ const PropertiesList = ({ searchTerm = '' }) => {
               {filteredAndSortedProperties.length}
             </span>
           </div>
-          <button 
-            onClick={handleCreateProperty}
-            className="btn btn-primary flex items-center space-x-2 p-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Adaugă Proprietate</span>
-          </button>
+          {['admin', 'Moderator', 'PowerUser'].includes(user?.role) && (
+            <button 
+              onClick={handleCreateProperty}
+              className="btn btn-primary flex items-center space-x-2 p-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Adaugă Proprietate</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -210,9 +220,7 @@ const PropertiesList = ({ searchTerm = '' }) => {
                           <div className="text-sm font-medium text-gray-900">
                             {property.name}
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {property.apartments?.length || 0} apartamente
-                          </div>
+
                         </div>
                       </div>
                     </td>

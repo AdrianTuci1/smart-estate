@@ -51,7 +51,9 @@ const LoginForm = ({ onLogin, onShowCompanySetup }) => {
           token,
           companyAlias: user.companyAlias,
           username: user.username,
-          user: user
+          role: user.role,
+          id: user.id,
+          companyId: user.companyId
         });
       } else {
         setError(response.error || 'Eroare la autentificare');
