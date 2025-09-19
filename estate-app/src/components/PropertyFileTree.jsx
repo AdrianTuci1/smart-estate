@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Upload, Download, Trash2, ExternalLink, File, Folder, FolderOpen, FileSpreadsheet, Plus, AlertCircle } from 'lucide-react';
+import { Upload, File, Folder, FolderOpen, FileSpreadsheet, Plus, AlertCircle } from 'lucide-react';
 import { TreeView } from './ui/tree-view';
 import apiService from '../services/api';
 import googleSheetsService from '../services/googleSheetsService';
@@ -158,97 +158,6 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
                       </span>
                     )}
                   </span>
-                </div>
-                <div className={`${file.isConverting ? 'opacity-50' : 'opacity-0 group-hover:opacity-100'} transition-opacity flex items-center space-x-1 ml-2`}>
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (file.isConverting) return; // Disable click during conversion
-                      
-                      if (file.isGoogleSheet) {
-                        // Handle Google Sheet click
-                        if (onFileClick) {
-                          onFileClick(file);
-                        }
-                      } else {
-                        try {
-                          const response = await apiService.getFileViewUrl(selectedProperty.id, file.id);
-                          if (response.success && response.data.viewUrl) {
-                            const fileObj = {
-                              url: response.data.viewUrl,
-                              name: response.data.fileName || file.name,
-                              type: file.type
-                            };
-                            handleFileAction(fileObj, 'native');
-                          }
-                        } catch (error) {
-                          console.error('Error opening file:', error);
-                          if (file.url) {
-                            handleFileAction({ url: file.url, name: file.name, type: file.type }, 'native');
-                          }
-                        }
-                      }
-                    }}
-                    disabled={file.isConverting}
-                    className={`p-1 rounded transition-colors ${
-                      file.isConverting 
-                        ? 'cursor-not-allowed opacity-50' 
-                        : 'hover:bg-blue-100'
-                    }`}
-                    title={
-                      file.isConverting 
-                        ? "Conversie în curs..." 
-                        : file.isGoogleSheet 
-                          ? "Deschide Google Sheet" 
-                          : "Deschide în aplicație"
-                    }
-                  >
-                    <ExternalLink className="h-3 w-3 text-blue-500" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (file.isConverting) return; // Disable click during conversion
-                      
-                      if (file.isGoogleSheet) {
-                        // Handle Google Sheet download
-                        handleDownloadGoogleSheet(file);
-                      } else {
-                        handleDownloadFile(file);
-                      }
-                    }}
-                    disabled={file.isConverting}
-                    className={`p-1 rounded transition-colors ${
-                      file.isConverting 
-                        ? 'cursor-not-allowed opacity-50' 
-                        : 'hover:bg-green-100'
-                    }`}
-                    title={file.isConverting ? "Conversie în curs..." : "Descarcă fișier"}
-                  >
-                    <Download className="h-3 w-3 text-green-500" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (file.isConverting) return; // Disable click during conversion
-                      
-                      if (file.isGoogleSheet) {
-                        // Handle Google Sheet delete
-                        handleDeleteGoogleSheet(file);
-                      } else {
-                        handleDeleteFile(file);
-                      }
-                    }}
-                    disabled={file.isConverting}
-                    className={`p-1 rounded transition-colors ${
-                      file.isConverting 
-                        ? 'cursor-not-allowed opacity-50' 
-                        : 'hover:bg-red-100'
-                    }`}
-                    title={file.isConverting ? "Conversie în curs..." : "Șterge"}
-                  >
-                    <Trash2 className="h-3 w-3 text-red-500" />
-                  </button>
                 </div>
               </div>
             ),
@@ -413,122 +322,9 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
     }
   };
 
-  const handleDownloadFile = async (file) => {
-    try {
-      const response = await apiService.getFileDownloadUrl(selectedProperty.id, file.id);
-      
-      if (response.success && response.data.downloadUrl) {
-        // Use file handler utility for download
-        const fileObj = {
-          url: response.data.downloadUrl,
-          name: response.data.fileName || file.name,
-          type: file.type
-        };
-        handleFileAction(fileObj, 'download');
-      }
-    } catch (error) {
-      console.error('Error downloading file:', error);
-      // Fallback to direct URL if available
-      if (file.url) {
-        const fileObj = {
-          url: file.url,
-          name: file.name,
-          type: file.type
-        };
-        handleFileAction(fileObj, 'download');
-      } else {
-        alert('Eroare la descărcarea fișierului: ' + error.message);
-      }
-    }
-  };
 
-  const handleDeleteFile = async (file) => {
-    if (!selectedProperty?.id || !file.id) return;
-    
-    if (confirm(`Sigur doriți să ștergeți fișierul "${file.name}"?`)) {
-      // Store original state for rollback
-      const originalFiles = [...files];
-      
-      // Optimistic update - remove file immediately from UI
-      setFiles(prev => prev.filter(f => f.id !== file.id));
-      removeFileOptimistic(file.id);
-      
-      setIsLoading(true);
-      try {
-        const response = await apiService.deletePropertyFile(selectedProperty.id, file.id);
-        if (response.success) {
-          console.log('File deleted successfully');
-          // Reload files to ensure consistency
-          await loadPropertyFiles();
-        } else {
-          // Rollback on failure
-          setFiles(originalFiles);
-          // Note: We'd need to restore the file in optimistic store too
-          console.error('Failed to delete file:', response.error);
-          alert('Eroare la ștergerea fișierului: ' + response.error);
-        }
-      } catch (error) {
-        console.error('Error deleting file:', error);
-        // Rollback on error
-        setFiles(originalFiles);
-        alert('Eroare la ștergerea fișierului: ' + error.message);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
 
-  // Handle Google Sheet download
-  const handleDownloadGoogleSheet = async (file) => {
-    try {
-      const response = await googleSheetsService.exportGoogleSheetToExcel(file.spreadsheetId, 'xlsx');
-      if (response.success && response.data.downloadUrl) {
-        const link = document.createElement('a');
-        link.href = response.data.downloadUrl;
-        link.download = `${file.name}.xlsx`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    } catch (error) {
-      console.error('Error downloading Google Sheet:', error);
-      alert('Eroare la descărcarea foii de calcul: ' + error.message);
-    }
-  };
 
-  // Handle Google Sheet delete
-  const handleDeleteGoogleSheet = async (file) => {
-    if (!selectedProperty?.id || !file.spreadsheetId) return;
-    
-    if (confirm(`Sigur doriți să ștergeți foaia de calcul "${file.name}"? Această acțiune nu poate fi anulată.`)) {
-      // Store original state for rollback
-      const originalFiles = [...files];
-      
-      // Optimistic update - remove from UI
-      setFiles(prev => prev.filter(f => f.id !== file.id));
-      removeFileOptimistic(file.id);
-      
-      setIsLoading(true);
-      try {
-        // Unlink from property first
-        await googleSheetsService.unlinkSpreadsheetFromProperty(selectedProperty.id, file.spreadsheetId);
-        
-        // Note: In a real implementation, you might want to delete the actual Google Sheet
-        // For now, we just unlink it from the property
-        console.log('Google Sheet unlinked successfully');
-        
-        // Reload data to ensure consistency
-        await loadPropertyFiles();
-      } catch (error) {
-        console.error('Error deleting Google Sheet:', error);
-        // Rollback on error
-        setFiles(originalFiles);
-        alert('Eroare la ștergerea foii de calcul: ' + error.message);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
 
 
   return (
@@ -546,19 +342,7 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
         </div>
         
         <div className="flex items-center space-x-2">
-          <button
-            onClick={createNewGoogleSheet}
-            disabled={!googleSheetsAuthStatus?.isAuthorized}
-            className={`flex items-center space-x-1 px-3 py-1 text-sm rounded-lg transition-colors ${
-              googleSheetsAuthStatus?.isAuthorized
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-            title={googleSheetsAuthStatus?.isAuthorized ? "Creează o nouă foaie de calcul Google" : "Google Sheets nu este autorizat pentru compania ta"}
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            <span>Google Sheet</span>
-          </button>
+
           
           <label className={`flex items-center space-x-1 px-3 py-1 text-sm rounded-lg transition-colors cursor-pointer ${
             googleSheetsAuthStatus?.isAuthorized
