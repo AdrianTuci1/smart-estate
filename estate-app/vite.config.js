@@ -25,7 +25,7 @@ export default defineConfig({
   },
   define: {
     // Default API URL for development
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://localhost:3000'),
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://api.simplu.io'),
     // jQuery global pentru Luckysheet
     global: 'globalThis',
   }

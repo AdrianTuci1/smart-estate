@@ -25,6 +25,7 @@ const PropertyFileViewer = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
   const [viewUrl, setViewUrl] = useState('');
+  const [isGalleryPreviewMode, setIsGalleryPreviewMode] = useState(false);
 
   // Load items when component opens
   useEffect(() => {
@@ -34,9 +35,17 @@ const PropertyFileViewer = () => {
         // Use selected items (preview mode)
         setItems(currentItems);
         setCurrentItemIndex(0);
+        // Set gallery to preview mode by default
+        if (viewerType === 'gallery') {
+          setIsGalleryPreviewMode(true);
+        }
       } else if (selectedProperty?.id) {
         // Load all items from property
         loadPropertyItems();
+        // Set gallery to preview mode by default
+        if (viewerType === 'gallery') {
+          setIsGalleryPreviewMode(true);
+        }
       }
     }
   }, [isOpen, selectedProperty?.id, selectedFile, selectedGalleryImages, viewerType]);
@@ -45,8 +54,20 @@ const PropertyFileViewer = () => {
   useEffect(() => {
     if (items.length > 0 && currentItemIndex < items.length) {
       loadItemViewUrl();
+    } else {
+      // Clear view URL when no items or invalid index
+      setViewUrl('');
     }
   }, [currentItemIndex, items]);
+
+  // Cleanup effect when component unmounts or viewer closes
+  useEffect(() => {
+    return () => {
+      // Cleanup when component unmounts
+      setViewUrl('');
+      setItems([]);
+    };
+  }, []);
 
   const loadPropertyItems = async () => {
     try {
@@ -146,10 +167,14 @@ const PropertyFileViewer = () => {
   };
 
   const nextItem = () => {
+    // Clear current view URL before switching to free memory
+    setViewUrl('');
     setCurrentItemIndex((prev) => (prev + 1) % items.length);
   };
 
   const prevItem = () => {
+    // Clear current view URL before switching to free memory
+    setViewUrl('');
     setCurrentItemIndex((prev) => (prev - 1 + items.length) % items.length);
   };
 
@@ -211,6 +236,26 @@ const PropertyFileViewer = () => {
     } catch (error) {
       console.error('Error opening item:', error);
     }
+  };
+
+  const handleThumbnailDoubleClick = (index) => {
+    if (viewerType === 'gallery') {
+      setCurrentItemIndex(index);
+      setIsGalleryPreviewMode(false); // Switch to full view mode
+    }
+  };
+
+  const handleCloseFileViewer = () => {
+    // Clean up memory before closing
+    setViewUrl(''); // Clear the view URL to free memory
+    setItems([]); // Clear items array
+    setCurrentItemIndex(0); // Reset index
+    
+    // For gallery, return to preview mode when closing
+    if (viewerType === 'gallery') {
+      setIsGalleryPreviewMode(true);
+    }
+    closeFileViewer();
   };
 
   const handleDelete = async () => {
@@ -295,7 +340,7 @@ const PropertyFileViewer = () => {
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/20 z-40 transition-opacity"
-        onClick={closeFileViewer}
+        onClick={handleCloseFileViewer}
       />
       
       {/* Viewer Panel */}
@@ -348,7 +393,7 @@ const PropertyFileViewer = () => {
                 <Trash2 className="h-4 w-4 text-red-600" />
               </button>
               <button
-                onClick={closeFileViewer}
+                onClick={handleCloseFileViewer}
                 className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
                 title="Închide"
               >
@@ -358,8 +403,8 @@ const PropertyFileViewer = () => {
           </div>
         </div>
 
-        {/* Navigation arrows */}
-        {items.length > 1 && (
+        {/* Navigation arrows - hidden for gallery mode */}
+        {items.length > 1 && viewerType !== 'gallery' && (
           <>
             <button
               onClick={prevItem}
@@ -395,14 +440,77 @@ const PropertyFileViewer = () => {
             </div>
           ) : currentItem ? (
             <>
-              {viewerType === 'gallery' ? (
-                // For gallery images, show image directly
-                <div className="absolute inset-0 flex items-center justify-center p-4">
-                  <img
-                    src={currentItem.url}
-                    alt={currentItem.alt}
-                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                  />
+              {viewerType === 'gallery' && isGalleryPreviewMode ? (
+                // Gallery preview mode - show thumbnails grid
+                <div className="absolute inset-0 p-6 overflow-y-auto">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {items.map((item, index) => (
+                      <div
+                        key={item.id || index}
+                        className={`relative group cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                          index === currentItemIndex 
+                            ? 'border-primary ring-2 ring-primary/20' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => {
+                          // Clear current view URL before switching to free memory
+                          setViewUrl('');
+                          setCurrentItemIndex(index);
+                        }}
+                        onDoubleClick={() => handleThumbnailDoubleClick(index)}
+                        title="Click pentru a selecta, dublu click pentru a deschide complet"
+                      >
+                        <div className="bg-gray-100 flex items-center justify-center" style={{ aspectRatio: '1' }}>
+                          <img
+                            src={item.url}
+                            alt={item.alt || `Imagine ${index + 1}`}
+                            className="max-w-full max-h-full object-contain transition-transform duration-200 group-hover:scale-105"
+                            loading="lazy"
+                            style={{ maxWidth: '100%', maxHeight: '100%' }}
+                          />
+                        </div>
+                        {/* Overlay with image info */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-end">
+                          <div className="w-full p-2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <p className="text-white text-xs truncate">
+                              {item.alt || `Imagine ${index + 1}`}
+                            </p>
+                          </div>
+                        </div>
+                        {/* Selection indicator */}
+                        {index === currentItemIndex && (
+                          <div className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                            <div className="w-2 h-2 bg-white rounded-full"></div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : viewerType === 'gallery' ? (
+                // For gallery images, show image with internal backdrop and click-to-close-to-thumbnails
+                <div
+                  className="absolute inset-0 bg-black/80 flex items-center justify-center"
+                  onClick={() => setIsGalleryPreviewMode(true)}
+                >
+                  {/* Close button */}
+                  <button
+                    onClick={() => setIsGalleryPreviewMode(true)}
+                    className="absolute top-4 right-4 z-20 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+                    title="Închide imaginea"
+                  >
+                    <X className="h-5 w-5 text-white" />
+                  </button>
+                  
+                  {/* Image container */}
+                  <div className="w-full h-full flex items-center justify-center p-8" onClick={(e) => e.stopPropagation()}>
+                    <img
+                      src={currentItem.url}
+                      alt={currentItem.alt}
+                      className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                      style={{ maxWidth: '100%', maxHeight: '100%' }}
+                    />
+                  </div>
                 </div>
               ) : viewUrl ? (
                 // Check if it's a document that can be viewed with our viewers
@@ -500,8 +608,8 @@ const PropertyFileViewer = () => {
           ) : null}
         </div>
 
-        {/* Item List (Bottom) */}
-        {items.length > 1 && (
+        {/* Item List (Bottom) - hidden for gallery mode */}
+        {items.length > 1 && viewerType !== 'gallery' && (
           <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
             <div className="flex space-x-2 overflow-x-auto">
               {items.map((item, index) => (
@@ -512,7 +620,11 @@ const PropertyFileViewer = () => {
                       ? 'border-primary ring-2 ring-primary/20' 
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
-                  onClick={() => setCurrentItemIndex(index)}
+                  onClick={() => {
+                    // Clear current view URL before switching to free memory
+                    setViewUrl('');
+                    setCurrentItemIndex(index);
+                  }}
                 >
                   <div className="w-full h-full bg-gray-50 flex items-center justify-center">
                     {viewerType === 'gallery' ? (

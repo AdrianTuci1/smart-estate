@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FileText, Download, AlertCircle, ExternalLink } from 'lucide-react';
 import './DocumentViewers.css';
 
@@ -6,12 +6,25 @@ const PDFViewer = ({ fileUrl, fileName, onError }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pdfUrl, setPdfUrl] = useState('');
+  const iframeRef = useRef(null);
 
   useEffect(() => {
     if (fileUrl) {
       loadPDF();
     }
   }, [fileUrl]);
+
+  // Cleanup effect to clear iframe when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clear iframe src to free memory when component unmounts
+      if (iframeRef.current) {
+        iframeRef.current.src = 'about:blank';
+      }
+      // Clear PDF URL state
+      setPdfUrl('');
+    };
+  }, []);
 
   const loadPDF = async () => {
     try {
@@ -95,6 +108,7 @@ const PDFViewer = ({ fileUrl, fileName, onError }) => {
       {/* PDF Content */}
       <div className="flex-1 bg-gray-100">
         <iframe
+          ref={iframeRef}
           src={pdfUrl}
           className="w-full h-full border-0"
           title={fileName}

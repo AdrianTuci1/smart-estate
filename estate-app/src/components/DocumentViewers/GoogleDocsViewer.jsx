@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ExternalLink, RefreshCw, FileText } from 'lucide-react';
 
 const GoogleDocsViewer = ({ file, onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const iframeRef = useRef(null);
 
   // Early return if file is not provided or invalid
   if (!file) {
@@ -40,6 +41,16 @@ const GoogleDocsViewer = ({ file, onClose }) => {
     console.log('🔗 Using iframe URL:', selectedUrl);
     return selectedUrl;
   };
+
+  // Cleanup effect to clear iframe when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clear iframe src to free memory when component unmounts
+      if (iframeRef.current) {
+        iframeRef.current.src = 'about:blank';
+      }
+    };
+  }, []);
 
   const openForEditing = () => {
     if (file?.url) {
@@ -133,6 +144,7 @@ const GoogleDocsViewer = ({ file, onClose }) => {
       {!error && getPreviewUrl() ? (
         <div className="flex-1 relative">
           <iframe
+            ref={iframeRef}
             id="docs-iframe"
             src={getPreviewUrl()}
             className="w-full h-full border-0"

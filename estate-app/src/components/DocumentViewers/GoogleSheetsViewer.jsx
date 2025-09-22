@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ExternalLink, RefreshCw, FileSpreadsheet } from 'lucide-react';
 
 const GoogleSheetsViewer = ({ file, onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const iframeRef = useRef(null);
 
   // Early return if file is not provided or invalid
   if (!file) {
@@ -48,6 +49,16 @@ const GoogleSheetsViewer = ({ file, onClose }) => {
       alert('Nu s-a putut deschide foaia de calcul pentru editare');
     }
   };
+
+  // Cleanup effect to clear iframe when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clear iframe src to free memory when component unmounts
+      if (iframeRef.current) {
+        iframeRef.current.src = 'about:blank';
+      }
+    };
+  }, []);
 
   const handleIframeLoad = () => {
     console.log('✅ Google Sheets iframe loaded successfully');
@@ -113,6 +124,7 @@ const GoogleSheetsViewer = ({ file, onClose }) => {
       {!error && getPreviewUrl() ? (
         <div className="flex-1 relative">
           <iframe
+            ref={iframeRef}
             id="sheets-iframe"
             src={getPreviewUrl()}
             className="w-full h-full border-0"

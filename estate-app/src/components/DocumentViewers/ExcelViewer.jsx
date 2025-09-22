@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FileSpreadsheet, ExternalLink, RefreshCw } from 'lucide-react';
 
 const ExcelViewer = ({ fileUrl, fileName, onError, file }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const iframeRef = useRef(null);
 
   const handleIframeLoad = () => {
     setIsLoading(false);
@@ -14,6 +15,16 @@ const ExcelViewer = ({ fileUrl, fileName, onError, file }) => {
     setIsLoading(false);
     setError('Nu s-a putut încărca fișierul în previzualizare.');
   };
+
+  // Cleanup effect to clear iframe when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clear iframe src to free memory when component unmounts
+      if (iframeRef.current) {
+        iframeRef.current.src = 'about:blank';
+      }
+    };
+  }, []);
 
   const openExternal = () => {
     window.open(fileUrl, '_blank');
@@ -102,6 +113,7 @@ const ExcelViewer = ({ fileUrl, fileName, onError, file }) => {
         ) : getIframeUrl() ? (
           /* Google Sheets Preview Iframe */
           <iframe
+            ref={iframeRef}
             id="excel-iframe"
             src={getIframeUrl()}
             className="w-full h-full border-0"
