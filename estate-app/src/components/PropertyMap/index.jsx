@@ -21,13 +21,14 @@ const PropertyMap = () => {
     mapZoom, 
     setMapView, 
     loadMapView, 
-    saveMapView 
+    saveMapView,
+    properties: storeProperties,
+    setProperties
   } = useAppStore();
   
   // Remove selectedMarker state - we'll use selectedProperty directly
   const [map, setMap] = useState(null);
   const [showPOIs, setShowPOIs] = useState(false);
-  const [properties, setProperties] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAddingProperty, setIsAddingProperty] = useState(false);
@@ -37,6 +38,8 @@ const PropertyMap = () => {
   // Ref to track if we're programmatically updating the map
   const isProgrammaticUpdate = useRef(false);
   const debounceTimeout = useRef(null);
+  const lastLoadedBounds = useRef(null);
+  const boundsChangeTimeout = useRef(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -60,11 +63,19 @@ const PropertyMap = () => {
   }, [map, showPOIs]);
 
   // Load properties from API
-  const loadProperties = async () => {
+  const loadProperties = async (bounds = null) => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await apiService.getProperties();
+      
+      let response;
+      if (bounds) {
+        // Load properties for specific bounds
+        response = await apiService.getPropertiesByBounds(bounds);
+      } else {
+        // Load all properties (initial load)
+        response = await apiService.getProperties();
+      }
       
       if (response.success && response.data) {
         
@@ -77,26 +88,45 @@ const PropertyMap = () => {
           };
         }).filter(property => property.position); // Only show properties with coordinates
         
-       
-        setProperties(propertiesWithPosition);
+        if (bounds) {
+          // Merge with existing properties, avoiding duplicates
+          setProperties(prevProperties => {
+            const existingIds = new Set(prevProperties.map(p => p.id));
+            const newProperties = propertiesWithPosition.filter(p => !existingIds.has(p.id));
+            return [...prevProperties, ...newProperties];
+          });
+        } else {
+          // Replace all properties (initial load)
+          setProperties(propertiesWithPosition);
+        }
       } else {
-        setProperties([]);
+        if (!bounds) {
+          // Only clear properties on initial load failure
+          setProperties([]);
+        }
       }
     } catch (err) {
       console.error('Failed to load properties:', err);
       setError('Eroare la încărcarea proprietăților');
-      // No properties available due to error
-      setProperties([]);
+      if (!bounds) {
+        // Only clear properties on initial load failure
+        setProperties([]);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadProperties();
+    // Only load properties if store is empty
+    if (storeProperties.length === 0) {
+      loadProperties();
+    } else {
+      setIsLoading(false);
+    }
     // Load saved map view from localStorage
     loadMapView();
-  }, []);
+  }, [storeProperties.length]);
 
   // No need to sync marker selection - ClusterMarkerManager handles this directly with selectedProperty
 
@@ -120,15 +150,15 @@ const PropertyMap = () => {
     }
   }, [map, mapCenter, mapZoom]);
 
-  // Reset adding property state when drawer is closed and reload properties
+  // Reset adding property state when drawer is closed
   useEffect(() => {
     if (!isDrawerOpen) {
-      console.log('PropertyMap: Drawer closed, reloading properties');
+      console.log('PropertyMap: Drawer closed, resetting adding property state');
       setIsAddingProperty(false);
       setNewPropertyPosition(null);
       setNewPropertyAddress('');
-      // Reload properties to show newly created ones
-      loadProperties();
+      // Note: Removed automatic property reloading to prevent map reloading
+      // Properties will be reloaded only when explicitly needed (e.g., after creating new property)
     }
   }, [isDrawerOpen]);
 
@@ -158,6 +188,27 @@ const PropertyMap = () => {
     if (debounceTimeout.current) {
       clearTimeout(debounceTimeout.current);
     }
+    // Clear any pending bounds change timeout
+    if (boundsChangeTimeout.current) {
+      clearTimeout(boundsChangeTimeout.current);
+    }
+  }, []);
+
+  // Check if bounds have changed significantly
+  const hasBoundsChangedSignificantly = useCallback((newBounds, lastBounds) => {
+    if (!lastBounds) return true;
+    
+    const latOverlap = Math.min(newBounds.north, lastBounds.north) - Math.max(newBounds.south, lastBounds.south);
+    const lngOverlap = Math.min(newBounds.east, lastBounds.east) - Math.max(newBounds.west, lastBounds.west);
+    
+    const newLatSpan = newBounds.north - newBounds.south;
+    const newLngSpan = newBounds.east - newBounds.west;
+    
+    // If less than 30% overlap in either direction, consider it significant
+    const latOverlapRatio = latOverlap > 0 ? latOverlap / newLatSpan : 0;
+    const lngOverlapRatio = lngOverlap > 0 ? lngOverlap / newLngSpan : 0;
+    
+    return latOverlapRatio < 0.3 || lngOverlapRatio < 0.3;
   }, []);
 
   // Handle map view changes (center and zoom) with debouncing
@@ -172,13 +223,19 @@ const PropertyMap = () => {
       clearTimeout(debounceTimeout.current);
     }
     
+    // Clear existing bounds change timeout
+    if (boundsChangeTimeout.current) {
+      clearTimeout(boundsChangeTimeout.current);
+    }
+    
     // Debounce the update to avoid too frequent saves
     debounceTimeout.current = setTimeout(() => {
       if (map) {
         const center = map.getCenter();
         const zoom = map.getZoom();
+        const bounds = map.getBounds();
         
-        if (center && zoom !== undefined) {
+        if (center && zoom !== undefined && bounds) {
           const newCenter = {
             lat: center.lat(),
             lng: center.lng()
@@ -188,10 +245,26 @@ const PropertyMap = () => {
           setMapView(newCenter, zoom);
           // Save to localStorage
           saveMapView(newCenter, zoom);
+          
+          // Check if we need to load properties for new bounds
+          const newBounds = {
+            north: bounds.getNorthEast().lat(),
+            south: bounds.getSouthWest().lat(),
+            east: bounds.getNorthEast().lng(),
+            west: bounds.getSouthWest().lng()
+          };
+          
+          if (hasBoundsChangedSignificantly(newBounds, lastLoadedBounds.current)) {
+            // Debounce bounds-based property loading
+            boundsChangeTimeout.current = setTimeout(() => {
+              loadProperties(newBounds);
+              lastLoadedBounds.current = newBounds;
+            }, 1000); // 1 second debounce for bounds changes
+          }
         }
       }
     }, 300); // 300ms debounce
-  }, [map, setMapView, saveMapView]);
+  }, [map, setMapView, saveMapView, hasBoundsChangedSignificantly, loadProperties]);
 
   const handleMarkerClick = (property) => {
     // Just select the property - this will color the marker differently
@@ -310,7 +383,7 @@ const PropertyMap = () => {
       >
         <EfficientClusterManager
           map={map}
-          properties={properties}
+          properties={storeProperties}
           selectedProperty={selectedProperty}
           onMarkerClick={handleMarkerClick}
           zoom={zoom}

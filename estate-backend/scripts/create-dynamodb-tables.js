@@ -107,6 +107,7 @@ async function createTables() {
     console.log('⏳ Waiting for PropertyGoogleSheets table to become active...');
     await dynamodb.waitFor('tableExists', { TableName: 'PropertyGoogleSheets' }).promise();
     console.log('✅ PropertyGoogleSheets table is ready!');
+
     
     console.log('🎉 All tables are ready!');
 

@@ -22,6 +22,7 @@ const upload = multer({
       // Word documents
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
       'application/msword', // .doc
+      'application/docx',
       
       // Excel documents
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx

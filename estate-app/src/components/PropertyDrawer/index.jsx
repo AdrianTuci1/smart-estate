@@ -6,7 +6,7 @@ import apiService from '../../services/api';
 import PropertyDescription from './PropertyDescription';
 
 const PropertyDrawer = () => {
-  const { selectedProperty, isDrawerOpen, closeDrawer } = useAppStore();
+  const { selectedProperty, isDrawerOpen, closeDrawer, addProperty, updateProperty, removeProperty } = useAppStore();
   const { openFileViewer, openGalleryViewer } = useFileViewerStore();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
@@ -98,6 +98,8 @@ const PropertyDrawer = () => {
         
         if (response.success) {
           console.log('Property created successfully:', response.data);
+          // Add the new property to the store
+          addProperty(response.data);
           // Close drawer and reset form
           setIsEditing(false);
           closeDrawer();
@@ -123,6 +125,8 @@ const PropertyDrawer = () => {
         
         if (response.success) {
           console.log('Property updated successfully:', response.data);
+          // Update the property in the store
+          updateProperty(selectedProperty.id, response.data);
           setIsEditing(false);
         } else {
           console.error('Failed to update property:', response.error);
@@ -188,6 +192,8 @@ const PropertyDrawer = () => {
       const response = await apiService.deleteProperty(selectedProperty.id);
       if (response.success) {
         console.log('Property deleted successfully');
+        // Remove the property from the store
+        removeProperty(selectedProperty.id);
         closeDrawer();
       } else {
         console.error('Failed to delete property:', response.error);

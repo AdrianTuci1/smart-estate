@@ -44,7 +44,9 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
             s3Key: file.s3Key,
             createdAt: file.createdAt,
             isGoogleSheet: file.isGoogleSheet || false,
-            spreadsheetId: file.spreadsheetId || null
+            spreadsheetId: file.spreadsheetId || null,
+            isGoogleDoc: file.isGoogleDoc || false,
+            documentId: file.documentId || null
           }));
           setFiles(propertyFiles);
           setAllFiles(propertyFiles); // Update global store
@@ -61,7 +63,9 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
               s3Key: file.s3Key,
               createdAt: file.createdAt,
               isGoogleSheet: file.isGoogleSheet || false,
-              spreadsheetId: file.spreadsheetId || null
+              spreadsheetId: file.spreadsheetId || null,
+              isGoogleDoc: file.isGoogleDoc || false,
+              documentId: file.documentId || null
             }));
             setFiles(propertyFiles);
             setAllFiles(propertyFiles); // Update global store
@@ -106,6 +110,7 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
   const treeData = useMemo(() => {
     const categorizeFile = (file) => {
       if (file.isGoogleSheet) return 'spreadsheets';
+      if (file.isGoogleDoc) return 'documents';
       
       const extension = file.name.split('.').pop()?.toLowerCase();
       const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
@@ -193,6 +198,19 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
           } else {
             console.error('Failed to upload to Google Sheets:', response.error);
             alert(`Eroare la încărcarea "${file.name}" în Google Sheets: ${response.error}`);
+          }
+        } else if (['docx', 'doc', 'txt'].includes(fileExtension)) {
+          // Word documents go directly to Google Docs (using same endpoint as Google Sheets)
+          console.log(`Uploading ${file.name} to Google Docs...`);
+          const response = await apiService.convertDocxToGoogleDocs(selectedProperty.id, file);
+          
+          if (response.success) {
+            console.log(`✅ ${file.name} uploaded to Google Docs successfully`);
+            // Reload files to get the new Google Doc
+            await loadPropertyFiles();
+          } else {
+            console.error('Failed to upload to Google Docs:', response.error);
+            alert(`Eroare la încărcarea "${file.name}" în Google Docs: ${response.error}`);
           }
         } else {
           // Other files go to S3

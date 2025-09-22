@@ -43,7 +43,7 @@ const useAppStore = create((set, get) => ({
   })),
 
   // Map view state for controlling map position and zoom
-  mapCenter: { lat: 44.4268, lng: 26.1025 }, // Default to Cluj-Napoca
+  mapCenter: { lat: 44.4268, lng: 26.1025 }, // Default to Bucharest
   mapZoom: 14, // Default zoom level
   setMapCenter: (center) => set({ mapCenter: center }),
   setMapZoom: (zoom) => set({ mapZoom: zoom }),

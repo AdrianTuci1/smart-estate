@@ -315,6 +315,7 @@ class GoogleSheetsService {
           spreadsheetId: spreadsheetId || '',
           fileName: fileName || 'Untitled Spreadsheet',
           url: url || '',
+          documentType: 'google-sheets', // Add field to distinguish from docs
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }, {
@@ -330,14 +331,41 @@ class GoogleSheetsService {
     }
   }
 
+  // Store document reference in database (using same table as spreadsheets)
+  async storeDocumentReference(propertyId, documentId, fileName, url) {
+    try {
+      const params = {
+        TableName: 'PropertyGoogleSheets',
+        Item: marshall({
+          propertyId: propertyId || '',
+          spreadsheetId: documentId || '', // Reuse spreadsheetId field for documentId
+          fileName: fileName || 'Untitled Document',
+          url: url || '',
+          documentType: 'google-docs', // Add field to distinguish from spreadsheets
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }, {
+          removeUndefinedValues: true
+        })
+      };
+      
+      const putCommand = new PutItemCommand(params);
+      await this.dynamodb.send(putCommand);
+    } catch (error) {
+      console.error('Error storing document reference:', error);
+      throw error;
+    }
+  }
+
   // Get spreadsheets for a property
   async getPropertySpreadsheets(propertyId) {
     try {
       const params = {
         TableName: 'PropertyGoogleSheets',
-        FilterExpression: 'propertyId = :propertyId',
+        FilterExpression: 'propertyId = :propertyId AND (attribute_not_exists(documentType) OR documentType = :documentType)',
         ExpressionAttributeValues: marshall({
-          ':propertyId': propertyId || ''
+          ':propertyId': propertyId || '',
+          ':documentType': 'google-sheets'
         }, {
           removeUndefinedValues: true
         })
@@ -353,6 +381,34 @@ class GoogleSheetsService {
       };
     } catch (error) {
       console.error('Error getting property spreadsheets:', error);
+      throw error;
+    }
+  }
+
+  // Get documents for a property
+  async getPropertyDocuments(propertyId) {
+    try {
+      const params = {
+        TableName: 'PropertyGoogleSheets',
+        FilterExpression: 'propertyId = :propertyId AND documentType = :documentType',
+        ExpressionAttributeValues: marshall({
+          ':propertyId': propertyId || '',
+          ':documentType': 'google-docs'
+        }, {
+          removeUndefinedValues: true
+        })
+      };
+      
+      const scanCommand = new ScanCommand(params);
+      const result = await this.dynamodb.send(scanCommand);
+      const documents = result.Items ? result.Items.map(item => unmarshall(item)) : [];
+      
+      return {
+        success: true,
+        data: documents
+      };
+    } catch (error) {
+      console.error('Error getting property documents:', error);
       throw error;
     }
   }
@@ -530,6 +586,94 @@ class GoogleSheetsService {
     }
   }
 
+  // Convert DOCX file to Google Docs using Google Drive API
+  async convertDocxToGoogleDocs(propertyId, file) {
+    try {
+      if (!this.auth) {
+        throw new Error('Not authenticated with Google Drive');
+      }
+
+      // Get the file name - handle both originalname and name properties
+      const fileName = file.originalname || file.name || 'Untitled Document';
+      console.log('🔄 Converting DOCX file to Google Docs:', fileName);
+      
+      // Upload DOCX file directly to Google Drive and convert to Google Docs
+      const { Readable } = require('stream');
+      
+      // Convert buffer to stream for Google Drive API
+      const fileStream = new Readable();
+      fileStream.push(file.buffer);
+      fileStream.push(null); // End the stream
+      
+      const media = {
+        mimeType: file.mimetype || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        body: fileStream
+      };
+
+      const fileMetadata = {
+        name: fileName,
+        mimeType: 'application/vnd.google-apps.document' // This converts to Google Docs format
+      };
+
+      console.log('📤 Uploading to Google Drive with conversion...');
+      const driveResponse = await this.drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: 'id,name,webViewLink,mimeType'
+      });
+
+      const documentId = driveResponse.data.id;
+      const documentUrl = driveResponse.data.webViewLink;
+      const fileId = `gd_${documentId}`;
+
+      console.log('✅ DOCX converted to Google Docs:', {
+        documentId,
+        fileName,
+        documentUrl
+      });
+
+      // Store document reference in database
+      await this.storeDocumentReference(propertyId, documentId, fileName, documentUrl);
+
+      // Set permissions to allow anyone with the link to edit
+      await this.setDocumentPublicPermissions(documentId);
+
+      // Add Google Docs to property files array for persistence
+      const Property = require('../models/Property');
+      const property = await Property.getById(propertyId);
+      
+      if (property.success && property.data) {
+        const propertyInstance = new Property(property.data);
+        await propertyInstance.addFile({
+          id: fileId,
+          name: fileName,
+          type: 'GOOGLE_DOC',
+          size: 'Google Doc',
+          url: documentUrl,
+          s3Key: '', // Google Docs don't have S3 keys
+          createdAt: new Date().toISOString(),
+          isGoogleDoc: true,
+          documentId: documentId
+        });
+      }
+
+      return {
+        success: true,
+        data: {
+          documentId,
+          fileName: fileName,
+          documentUrl: documentUrl,
+          fileId: fileId,
+          fileType: 'GOOGLE_DOC',
+          createdAt: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      console.error('Error converting DOCX to Google Docs:', error);
+      throw error;
+    }
+  }
+
   // Export Google Sheet to Excel
   async exportGoogleSheetToExcel(spreadsheetId, format = 'xlsx') {
     try {
@@ -605,6 +749,43 @@ class GoogleSheetsService {
     } catch (error) {
       console.error('Error setting public permissions:', error);
       // Don't throw error - this is not critical for spreadsheet creation
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Set public permissions for document (anyone with link can edit)
+  async setDocumentPublicPermissions(documentId) {
+    try {
+      if (!this.auth) {
+        throw new Error('Not authenticated with Google Drive');
+      }
+
+      // Set permission for anyone with the link to edit
+      const permission = {
+        role: 'writer', // Allows editing
+        type: 'anyone', // Anyone with the link
+      };
+
+      const response = await this.drive.permissions.create({
+        fileId: documentId,
+        resource: permission,
+      });
+
+      console.log(`✅ Set public edit permissions for document: ${documentId}`);
+      return {
+        success: true,
+        data: {
+          permissionId: response.data.id,
+          role: response.data.role,
+          type: response.data.type
+        }
+      };
+    } catch (error) {
+      console.error('Error setting document public permissions:', error);
+      // Don't throw error - this is not critical for document creation
       return {
         success: false,
         error: error.message
@@ -709,6 +890,42 @@ class GoogleSheetsService {
     }
   }
 
+  // Unlink document from property
+  async unlinkDocumentFromProperty(propertyId, documentId) {
+    try {
+      const params = {
+        TableName: 'PropertyGoogleSheets',
+        Key: marshall({
+          propertyId: propertyId || '',
+          spreadsheetId: documentId || '' // Use spreadsheetId field for documentId
+        }, {
+          removeUndefinedValues: true
+        })
+      };
+      
+      const deleteCommand = new DeleteItemCommand(params);
+      await this.dynamodb.send(deleteCommand);
+
+      // Also remove from property files array
+      const Property = require('../models/Property');
+      const property = await Property.getById(propertyId);
+      
+      if (property.success && property.data) {
+        const propertyInstance = new Property(property.data);
+        const fileId = `gd_${documentId}`;
+        await propertyInstance.deleteFile(fileId);
+      }
+      
+      return {
+        success: true,
+        message: 'Document unlinked successfully'
+      };
+    } catch (error) {
+      console.error('Error unlinking document:', error);
+      throw error;
+    }
+  }
+
   // Get OAuth2 authorization URL for company
   getCompanyAuthUrl(companyId, authorizedBy) {
     const oauth2Client = new google.auth.OAuth2(
@@ -719,6 +936,7 @@ class GoogleSheetsService {
 
     const scopes = [
       'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/documents',
       'https://www.googleapis.com/auth/drive.file'
     ];
 
@@ -748,6 +966,7 @@ class GoogleSheetsService {
 
     const scopes = [
       'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/documents',
       'https://www.googleapis.com/auth/drive.file'
     ];
 

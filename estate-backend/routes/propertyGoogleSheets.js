@@ -5,7 +5,7 @@ const { validateRequest } = require('../middleware/validation');
 const googleSheetsService = require('../services/googleSheetsService');
 const multer = require('multer');
 
-// Configure multer for Excel file uploads
+// Configure multer for Excel and Word file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -15,13 +15,18 @@ const upload = multer({
     const allowedTypes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
       'application/vnd.ms-excel', // .xls
-      'text/csv' // .csv
+      'text/csv', // .csv
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
+      'text/plain', // .txt
+      'application/docx',
+      'application/doc'
     ];
     
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only Excel files (.xlsx, .xls) and CSV files are allowed.'), false);
+      cb(new Error('Invalid file type. Only Excel files (.xlsx, .xls), CSV files, Word documents (.docx, .doc), and text files (.txt) are allowed.'), false);
     }
   }
 });
@@ -136,23 +141,39 @@ router.post('/convert', upload.single('file'), authenticateToken, async (req, re
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        error: 'Excel file is required'
+        error: 'File is required'
       });
     }
     
-    // Check if company has Google Sheets authorization
+    // Check if company has Google authorization
     const isAuthorized = await googleSheetsService.isCompanyAuthorized(req.user.companyId);
     if (!isAuthorized) {
       return res.status(403).json({
         success: false,
-        error: 'Google Sheets is not authorized for this company. Please contact your administrator.'
+        error: 'Google integration is not authorized for this company. Please contact your administrator.'
       });
     }
     
     // Set up authentication for this request using company credentials
     await googleSheetsService.getAuthClientForCompany(req.user.companyId);
     
-    const result = await googleSheetsService.convertExcelToGoogleSheet(finalPropertyId, req.file);
+    // Determine file type and call appropriate conversion method
+    const fileExtension = req.file.originalname.split('.').pop()?.toLowerCase();
+    let result;
+    
+    if (['xlsx', 'xls', 'csv'].includes(fileExtension)) {
+      // Excel files go to Google Sheets
+      result = await googleSheetsService.convertExcelToGoogleSheet(finalPropertyId, req.file);
+    } else if (['docx', 'doc', 'txt'].includes(fileExtension)) {
+      // Word documents go to Google Docs
+      result = await googleSheetsService.convertDocxToGoogleDocs(finalPropertyId, req.file);
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Unsupported file type'
+      });
+    }
+    
     res.json(result);
   } catch (error) {
     console.error('Error converting Excel to Google Sheet:', error);

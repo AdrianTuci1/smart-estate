@@ -28,10 +28,10 @@ const EfficientClusterManager = ({ map, properties, selectedProperty, onMarkerCl
     }
 
     // Creează marker nou doar dacă nu există
-    const marker = createEnhancedMarker(property);
+    const marker = createEnhancedMarker(property, map, onMarkerClick, selectedProperty);
     marker.propertyId = property.id;
     marker.propertyData = property;
-    marker.addListener("click", () => onMarkerClick(property));
+    // Nu mai adăugăm click listener pe marker-ul de bază, click-ul este pe overlay
     
     markersRef.current.set(property.id, marker);
     return marker;
@@ -71,16 +71,10 @@ const EfficientClusterManager = ({ map, properties, selectedProperty, onMarkerCl
            lng >= bounds.west;
   }, []);
 
-  // Memoized filtering - doar proprietățile vizibile
+  // Use all properties since we now load them dynamically based on map bounds
   const visibleProperties = useMemo(() => {
-    if (!map) return properties;
-    
-    const bounds = getViewportBounds();
-    if (!bounds) return properties;
-    
-    visibleBoundsRef.current = bounds;
-    return properties.filter(property => isPropertyInViewport(property, bounds));
-  }, [properties, map, getViewportBounds, isPropertyInViewport]);
+    return properties;
+  }, [properties]);
 
   // Centralizată logica de visibility
   const updateMarkerVisibility = useCallback((marker, isInCluster, forceVisible = false) => {
@@ -184,15 +178,23 @@ const EfficientClusterManager = ({ map, properties, selectedProperty, onMarkerCl
     }
   }, [zoom, handleClusteringEnd]);
 
-  // Optimizat selection effect
+  // Optimizat selection effect - actualizează culorile pentru selecție
   useEffect(() => {
-    if (!selectedProperty) return;
-
-    const selectedMarker = markersRef.current.get(selectedProperty.id);
-    if (selectedMarker) {
-      // Forțează visibility pentru marker-ul selectat
-      updateMarkerVisibility(selectedMarker, false, true);
-    }
+    // Actualizează culorile pentru toate marker-urile
+    markersRef.current.forEach((marker, propertyId) => {
+      if (marker.propertyOverlay) {
+        const isSelected = selectedProperty && selectedProperty.id === propertyId;
+        const statusColor = marker.propertyData.status === 'finalizată' ? '#10b981' : '#f59e0b';
+        const borderColor = isSelected ? '#3b82f6' : statusColor;
+        
+        marker.propertyOverlay.updateBorderColor(borderColor);
+        
+        // Forțează visibility pentru marker-ul selectat
+        if (isSelected) {
+          updateMarkerVisibility(marker, false, true);
+        }
+      }
+    });
   }, [selectedProperty, updateMarkerVisibility]);
 
   // Cleanup on unmount

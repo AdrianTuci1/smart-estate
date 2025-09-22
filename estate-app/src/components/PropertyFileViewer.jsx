@@ -4,7 +4,7 @@ import apiService from '../services/api';
 import { handleFileAction } from '../utils/fileHandler';
 import useAppStore from '../stores/useAppStore';
 import useFileViewerStore from '../stores/useFileViewerStore';
-import { DocxViewer, ExcelViewer, GoogleSheetsViewer, PDFViewer, getDocumentViewerType, isDocumentViewable } from './DocumentViewers';
+import { ExcelViewer, GoogleSheetsViewer, GoogleDocsViewer, PDFViewer, getDocumentViewerType, isDocumentViewable } from './DocumentViewers';
 
 const PropertyFileViewer = () => {
   const { selectedProperty } = useAppStore();
@@ -17,8 +17,6 @@ const PropertyFileViewer = () => {
     getCurrentItems,
     setAllFiles,
     setAllGalleryImages,
-    updateItemsAfterDeletion,
-    updateGalleryImages,
     removeFileOptimistic,
     removeGalleryImageOptimistic
   } = useFileViewerStore();
@@ -91,6 +89,9 @@ const PropertyFileViewer = () => {
       } else if (currentItem.isGoogleSheet || currentItem.type === 'GOOGLE_SHEET') {
         // For Google Sheets, use the direct Google URL
         setViewUrl(currentItem.url);
+      } else if (currentItem.isGoogleDoc || currentItem.type === 'GOOGLE_DOC') {
+        // For Google Docs, use the direct Google URL
+        setViewUrl(currentItem.url);
       } else {
         // For regular files, get presigned URL
         const response = await apiService.getFileViewUrl(selectedProperty.id, currentItem.id);
@@ -112,6 +113,11 @@ const PropertyFileViewer = () => {
     // Handle Google Sheets specifically
     if (item.isGoogleSheet || item.type === 'GOOGLE_SHEET') {
       return <Sheet className="h-8 w-8 text-green-600" />;
+    }
+    
+    // Handle Google Docs specifically
+    if (item.isGoogleDoc || item.type === 'GOOGLE_DOC') {
+      return <FileText className="h-8 w-8 text-blue-600" />;
     }
     
     const fileName = item.name || item.alt || '';
@@ -401,26 +407,12 @@ const PropertyFileViewer = () => {
               ) : viewUrl ? (
                 // Check if it's a document that can be viewed with our viewers
                 (() => {
-                  const documentType = getDocumentViewerType(currentItem.name, currentItem.isGoogleSheet);
-                  const isViewable = isDocumentViewable(currentItem.name, currentItem.isGoogleSheet);
+                  const documentType = getDocumentViewerType(currentItem.name, currentItem.isGoogleSheet, currentItem.isGoogleDoc);
+                  const isViewable = isDocumentViewable(currentItem.name, currentItem.isGoogleSheet, currentItem.isGoogleDoc);
                   
-                  console.log('🔍 PropertyFileViewer - currentItem:', currentItem);
-                  console.log('🔍 PropertyFileViewer - documentType:', documentType);
-                  console.log('🔍 PropertyFileViewer - isViewable:', isViewable);
-                  console.log('🔍 PropertyFileViewer - isGoogleSheet:', currentItem.isGoogleSheet);
                   
                   if (isViewable && documentType) {
                     switch (documentType) {
-                      case 'docx':
-                        return (
-                          <div className="absolute inset-0">
-                            <DocxViewer
-                              fileUrl={viewUrl}
-                              fileName={currentItem.name}
-                              onError={(error) => console.error('DocxViewer error:', error)}
-                            />
-                          </div>
-                        );
                       case 'excel':
                         return (
                           <div className="absolute inset-0">
@@ -433,10 +425,18 @@ const PropertyFileViewer = () => {
                           </div>
                         );
                       case 'google-sheets':
-                        console.log('🎯 PropertyFileViewer - Rendering GoogleSheetsViewer with file:', currentItem);
                         return (
                           <div className="absolute inset-0">
                             <GoogleSheetsViewer
+                              file={currentItem}
+                              onClose={closeFileViewer}
+                            />
+                          </div>
+                        );
+                      case 'google-docs':
+                        return (
+                          <div className="absolute inset-0">
+                            <GoogleDocsViewer
                               file={currentItem}
                               onClose={closeFileViewer}
                             />

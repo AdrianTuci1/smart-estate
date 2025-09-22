@@ -67,6 +67,17 @@ class ApiService {
     return this.request(endpoint);
   }
 
+  async getPropertiesByBounds(bounds) {
+    const { north, south, east, west } = bounds;
+    const params = new URLSearchParams({
+      north: north.toString(),
+      south: south.toString(),
+      east: east.toString(),
+      west: west.toString()
+    });
+    return this.request(`/api/properties/map/bounds?${params.toString()}`);
+  }
+
   async getProperty(id) {
     return this.request(`/api/properties/${id}`);
   }
@@ -366,6 +377,28 @@ class ApiService {
   }
 
   async convertExcelToGoogleSheet(propertyId, file) {
+    const token = localStorage.getItem('authToken');
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${this.baseURL}/api/properties/${propertyId}/google-sheets/convert`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  }
+
+  async convertDocxToGoogleDocs(propertyId, file) {
     const token = localStorage.getItem('authToken');
     const formData = new FormData();
     formData.append('file', file);

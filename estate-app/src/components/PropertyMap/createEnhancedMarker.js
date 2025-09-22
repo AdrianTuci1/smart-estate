@@ -1,5 +1,5 @@
 // Funcție pentru a crea elementul HTML al overlay-ului
-const createOverlayElement = (property) => {
+const createOverlayElement = (property, borderColor) => {
   // Creează elementul HTML
   const overlayDiv = document.createElement('div');
   overlayDiv.className = 'property-marker-overlay';
@@ -24,7 +24,7 @@ const createOverlayElement = (property) => {
       height: 48px;
       border-radius: 50%;
       overflow: hidden;
-      border: 3px solid #ffffff;
+      border: 3px solid ${borderColor};
       background: #f3f4f6;
       margin-bottom: 6px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -50,7 +50,7 @@ const createOverlayElement = (property) => {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      border: 1px solid #e5e7eb;
+      border: 1px solid ${borderColor};
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     ">
       ${propertyName}
@@ -64,28 +64,40 @@ const createOverlayElement = (property) => {
 };
 
 
-export const createEnhancedMarker = (property, map) => {
+export const createEnhancedMarker = (property, map, onMarkerClick, selectedProperty) => {
     if (!window.google || !window.google.maps) return null;
   
     // 1️⃣ Creează marker-ul de bază
-    const color = property.status === 'finalizată' ? '#10b981' : '#f59e0b';
+    const color ='#00000000';
   
     const marker = new window.google.maps.Marker({
       position: property.position,
       icon: {
-        path: "M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7z",
+        path: "",
         fillColor: color,
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
-        strokeWeight: 2,
-        scale: 1.5,
+        strokeColor: '#00000000',
         anchor: new window.google.maps.Point(12, 24)
       },
       title: property.name || property.address
     });
   
-  // 2️⃣ Creează overlay-ul HTML
-  const overlayDiv = createOverlayElement(property);
+  // 2️⃣ Calculează culoarea bazată pe status și selecție
+  const isSelected = selectedProperty && selectedProperty.id === property.id;
+  const statusColor = property.status === 'finalizată' ? '#10b981' : '#f59e0b';
+  const borderColor = isSelected ? '#3b82f6' : statusColor; // Albastru pentru selecție
+  
+  // 3️⃣ Creează overlay-ul HTML cu culoarea calculată
+  const overlayDiv = createOverlayElement(property, borderColor);
+  
+  // 3️⃣ Adaugă click handler pe overlay-ul HTML
+  if (onMarkerClick) {
+    overlayDiv.style.pointerEvents = 'auto';
+    overlayDiv.style.cursor = 'pointer';
+    overlayDiv.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onMarkerClick(property);
+    });
+  }
   
   // 3️⃣ Crează overlay custom Google Maps cu optimizări pentru stabilitate
   class StableOverlay extends google.maps.OverlayView {
@@ -157,6 +169,21 @@ export const createEnhancedMarker = (property, map) => {
         this.isVisible = visible;
         if (this.mapReady) {
           this.content.style.visibility = visible ? "visible" : "hidden";
+        }
+      }
+    }
+    
+    // Metodă pentru a actualiza culoarea border-ului
+    updateBorderColor(newColor) {
+      if (this.content) {
+        const imageDiv = this.content.querySelector('div');
+        const textDiv = this.content.querySelector('div:last-child');
+        
+        if (imageDiv) {
+          imageDiv.style.borderColor = newColor;
+        }
+        if (textDiv) {
+          textDiv.style.borderColor = newColor;
         }
       }
     }
