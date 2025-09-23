@@ -6,7 +6,7 @@ import useSearchStore from '../stores/useSearchStore';
 
 
 const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout }) => {
-  const { activeView, setActiveView, isDrawerOpen, showUserMenu, setShowUserMenu, setMapCenter } = useAppStore();
+  const { activeView, setActiveView, isDrawerOpen, showUserMenu, setShowUserMenu, setMapCenter, setMapView } = useAppStore();
   const { 
     searchQuery, 
     setSearchQuery, 
@@ -54,9 +54,11 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
     setSearchQuery(result.name || result.display);
     setShowResults(false);
     
-    // If result has coordinates, center the map
+    // If result has coordinates, center and zoom the map
     if (result.lat && result.lng) {
-      setMapCenter({ lat: result.lat, lng: result.lng });
+      // Determine zoom level based on result type
+      const zoomLevel = getZoomLevel(result.type || 'property');
+      setMapView({ lat: result.lat, lng: result.lng }, zoomLevel);
     }
     
     if (onResultSelect) {
@@ -70,7 +72,9 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
     
     // Center map on selected city using coordinates from server
     if (city.lat && city.lng) {
-      setMapCenter({ lat: city.lat, lng: city.lng });
+      // Use city zoom level for city selection
+      const zoomLevel = getZoomLevel('city');
+      setMapView({ lat: city.lat, lng: city.lng }, zoomLevel);
     }
     
     if (onCitySelect) {
@@ -91,8 +95,22 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
     return 'Căutați proprietăți...';
   };
 
+  // Helper function to get appropriate zoom level based on selection type
+  const getZoomLevel = (type) => {
+    switch (type) {
+      case 'property':
+        return 14; // High zoom for property details
+      case 'city':
+        return 12; // Medium zoom for city overview
+      case 'region':
+        return 12; // Lower zoom for regional view
+      default:
+        return 14; // Default zoom
+    }
+  };
+
   return (
-    <div className={`dock px-4 py-3 transition-transform duration-300 ease-in-out ${
+    <div className={`dock px-4 py-1 transition-transform duration-300 ease-in-out ${
       isDrawerOpen ? '-translate-y-20' : 'translate-y-0'
     }`}>
       <div className="flex items-center space-x-3">
@@ -100,7 +118,7 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
         <div className="flex items-center space-x-1">
           <button
             onClick={() => setActiveView('map')}
-            className={`flex items-center justify-center p-2 rounded-xl transition-all duration-200 ${
+            className={`flex items-center justify-center p-2 rounded-full transition-all duration-200 ${
               activeView === 'map'
                 ? 'bg-primary text-primary-foreground shadow-lg'
                 : 'bg-white/60 text-muted-foreground hover:bg-white/80 hover:text-foreground'
@@ -111,7 +129,7 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
           
           <button
             onClick={() => setActiveView('properties')}
-            className={`flex items-center justify-center p-2 rounded-xl transition-all duration-200 ${
+            className={`flex items-center justify-center p-2 rounded-full transition-all duration-200 ${
               activeView === 'properties'
                 ? 'bg-primary text-primary-foreground shadow-lg'
                 : 'bg-white/60 text-muted-foreground hover:bg-white/80 hover:text-foreground'
@@ -120,19 +138,7 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
             <Building2 className="h-4 w-4" />
           </button>
           
-          {user?.role === 'admin' && (
-            <button
-              onClick={() => setActiveView('settings')}
-              className={`flex items-center justify-center p-2 rounded-xl transition-all duration-200 ${
-                activeView === 'settings'
-                  ? 'bg-primary text-primary-foreground shadow-lg'
-                  : 'bg-white/60 text-muted-foreground hover:bg-white/80 hover:text-foreground'
-              }`}
-              title="Setări Administrator"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-          )}
+
         </div>
 
         {/* Search Bar */}
@@ -201,6 +207,20 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
                   <p className="text-sm font-medium text-popover-foreground">{user.username}</p>
                   <p className="text-xs text-muted-foreground">{user.companyAlias}</p>
                 </div>
+                
+                {(user?.role === 'admin' || user?.role === 'moderator') && (
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setActiveView('settings');
+                    }}
+                    className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Setări</span>
+                  </button>
+                )}
+                
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-popover-foreground hover:bg-accent"
