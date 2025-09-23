@@ -28,7 +28,13 @@ const upload = multer({
       'image/jpg',
       'image/png',
       'image/gif',
-      'image/webp'
+      'image/webp',
+      'application/docx',
+      'application/doc',
+      'application/txt',
+      'application/pdf',
+      'application/xls',
+      'application/xlsx',
     ];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);

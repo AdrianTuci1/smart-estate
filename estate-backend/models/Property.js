@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const { dynamoDB, TABLES } = require('../config/database');
+const { containsNormalized } = require('../utils/textNormalizer');
 
 class Property {
   constructor(data) {
@@ -79,30 +80,37 @@ class Property {
     }
   }
 
-  // Search properties by name and address
+  // Search properties by name and address (case-insensitive and diacritic-insensitive)
   static async search(companyId, searchTerm) {
-    const params = {
-      TableName: TABLES.PROPERTIES,
-      IndexName: 'CompanyIdIndex',
-      KeyConditionExpression: 'companyId = :companyId',
-      FilterExpression: 'contains(#name, :searchTerm) OR contains(address, :searchTerm)',
-      ExpressionAttributeNames: {
-        '#name': 'name'
-      },
-      ExpressionAttributeValues: {
-        ':companyId': companyId,
-        ':searchTerm': searchTerm
-      }
-    };
-
     try {
+      // First, get all properties for the company
+      const params = {
+        TableName: TABLES.PROPERTIES,
+        IndexName: 'CompanyIdIndex',
+        KeyConditionExpression: 'companyId = :companyId',
+        ExpressionAttributeValues: {
+          ':companyId': companyId
+        }
+      };
+
       const result = await dynamoDB.query(params).promise();
+      
+      // Filter properties using normalized text comparison
+      const filteredResults = result.Items.filter(property => {
+        const name = property.name || '';
+        const address = property.address || '';
+        
+        // Check if search term is contained in name or address (case-insensitive and diacritic-insensitive)
+        return containsNormalized(name, searchTerm) || containsNormalized(address, searchTerm);
+      });
+
       // Format results for search display
-      const formattedResults = result.Items.map(property => ({
+      const formattedResults = filteredResults.map(property => ({
         ...property,
         type: 'property',
         display: property.name || property.address
       }));
+      
       return { success: true, data: formattedResults };
     } catch (error) {
       return { success: false, error: error.message };
@@ -302,14 +310,7 @@ class Property {
       ScanIndexForward: false
     };
 
-    // Add search filter
-    if (filters.search) {
-      params.FilterExpression += ' AND (contains(#name, :searchTerm) OR contains(address, :searchTerm))';
-      params.ExpressionAttributeNames = {
-        '#name': 'name'
-      };
-      params.ExpressionAttributeValues[':searchTerm'] = filters.search;
-    }
+    // Note: Search filter will be applied after querying since DynamoDB contains() doesn't support diacritics
 
     // Add status filter
     if (filters.status) {
@@ -325,9 +326,21 @@ class Property {
 
     try {
       const result = await dynamoDB.query(params).promise();
+      let filteredItems = result.Items;
+
+      // Apply search filter after querying (for diacritic-insensitive search)
+      if (filters.search) {
+        filteredItems = result.Items.filter(property => {
+          const name = property.name || '';
+          const address = property.address || '';
+          
+          return containsNormalized(name, filters.search) || containsNormalized(address, filters.search);
+        });
+      }
+
       return { 
         success: true, 
-        data: result.Items,
+        data: filteredItems,
         lastKey: result.LastEvaluatedKey,
         hasMore: !!result.LastEvaluatedKey
       };

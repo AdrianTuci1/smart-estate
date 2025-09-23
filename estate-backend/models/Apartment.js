@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const { dynamoDB, TABLES } = require('../config/database');
+const { containsNormalized } = require('../utils/textNormalizer');
 
 class Apartment {
   constructor(data) {
@@ -108,22 +109,31 @@ class Apartment {
     }
   }
 
-  // Search apartments by apartment number or property
+  // Search apartments by apartment number or property (case-insensitive and diacritic-insensitive)
   static async search(companyId, searchTerm) {
-    const params = {
-      TableName: TABLES.APARTMENTS,
-      IndexName: 'CompanyIdIndex',
-      KeyConditionExpression: 'companyId = :companyId',
-      FilterExpression: 'contains(apartmentNumber, :searchTerm) OR contains(propertyId, :searchTerm)',
-      ExpressionAttributeValues: {
-        ':companyId': companyId,
-        ':searchTerm': searchTerm
-      }
-    };
-
     try {
+      // First, get all apartments for the company
+      const params = {
+        TableName: TABLES.APARTMENTS,
+        IndexName: 'CompanyIdIndex',
+        KeyConditionExpression: 'companyId = :companyId',
+        ExpressionAttributeValues: {
+          ':companyId': companyId
+        }
+      };
+
       const result = await dynamoDB.query(params).promise();
-      return { success: true, data: result.Items };
+      
+      // Filter apartments using normalized text comparison
+      const filteredResults = result.Items.filter(apartment => {
+        const apartmentNumber = apartment.apartmentNumber || '';
+        const propertyId = apartment.propertyId || '';
+        
+        // Check if search term is contained in apartment number or property ID (case-insensitive and diacritic-insensitive)
+        return containsNormalized(apartmentNumber, searchTerm) || containsNormalized(propertyId, searchTerm);
+      });
+
+      return { success: true, data: filteredResults };
     } catch (error) {
       return { success: false, error: error.message };
     }

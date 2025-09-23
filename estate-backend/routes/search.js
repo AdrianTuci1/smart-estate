@@ -4,6 +4,7 @@ const Property = require('../models/Property');
 const { authenticateToken, requireCompanyAccess } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { containsNormalized } = require('../utils/textNormalizer');
 
 // Apply authentication and company access middleware to all routes
 router.use(authenticateToken);
@@ -33,14 +34,14 @@ const popularCities = [
   { name: 'Piatra Neamț', lat: 46.9275, lng: 26.3708, population: '85000' }
 ];
 
-// Helper function to search in popular cities
+// Helper function to search in popular cities (case-insensitive and diacritic-insensitive)
 const searchCities = (searchTerm) => {
   if (!searchTerm || searchTerm.length < 2) {
     return popularCities.slice(0, 8); // Return top 8 cities for recommendations
   }
   
   return popularCities.filter(city => 
-    city.name.toLowerCase().includes(searchTerm.toLowerCase())
+    containsNormalized(city.name, searchTerm)
   ).slice(0, 10); // Return max 10 results
 };
 
