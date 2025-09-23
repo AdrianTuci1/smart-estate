@@ -92,54 +92,54 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
   };
 
   return (
-    <div className={`dock px-6 py-4 transition-transform duration-300 ease-in-out ${
-      isDrawerOpen ? 'translate-y-full' : 'translate-y-0'
+    <div className={`dock px-4 py-3 transition-transform duration-300 ease-in-out ${
+      isDrawerOpen ? '-translate-y-20' : 'translate-y-0'
     }`}>
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-3">
         {/* Navigation Buttons */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1">
           <button
             onClick={() => setActiveView('map')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+            className={`flex items-center justify-center p-2 rounded-xl transition-all duration-200 ${
               activeView === 'map'
                 ? 'bg-primary text-primary-foreground shadow-lg'
-                : 'bg-white/80 text-muted-foreground hover:bg-white hover:text-foreground'
+                : 'bg-white/60 text-muted-foreground hover:bg-white/80 hover:text-foreground'
             }`}
           >
-            <Map className="h-5 w-5" />
+            <Map className="h-4 w-4" />
           </button>
           
           <button
             onClick={() => setActiveView('properties')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+            className={`flex items-center justify-center p-2 rounded-xl transition-all duration-200 ${
               activeView === 'properties'
                 ? 'bg-primary text-primary-foreground shadow-lg'
-                : 'bg-white/80 text-muted-foreground hover:bg-white hover:text-foreground'
+                : 'bg-white/60 text-muted-foreground hover:bg-white/80 hover:text-foreground'
             }`}
           >
-            <Building2 className="h-5 w-5" />
+            <Building2 className="h-4 w-4" />
           </button>
           
           {user?.role === 'admin' && (
             <button
               onClick={() => setActiveView('settings')}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+              className={`flex items-center justify-center p-2 rounded-xl transition-all duration-200 ${
                 activeView === 'settings'
                   ? 'bg-primary text-primary-foreground shadow-lg'
-                  : 'bg-white/80 text-muted-foreground hover:bg-white hover:text-foreground'
+                  : 'bg-white/60 text-muted-foreground hover:bg-white/80 hover:text-foreground'
               }`}
               title="Setări Administrator"
             >
-              <Settings className="h-5 w-5" />
+              <Settings className="h-4 w-4" />
             </button>
           )}
         </div>
 
         {/* Search Bar */}
-        <div className="flex-1 max-w-md">
+        <div className="flex-1 max-w-sm">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-muted-foreground" />
+              <Search className="h-4 w-4 text-muted-foreground" />
             </div>
             <input
               ref={searchInputRef}
@@ -149,8 +149,8 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
               placeholder={getSearchPlaceholder()}
-              className={`w-full pl-10 pr-10 py-2 bg-background/80 border border-border rounded-lg text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200 ${
-                isSearchFocused ? 'bg-background shadow-lg' : ''
+              className={`w-full pl-9 pr-9 py-2 bg-white/60 border border-white/30 rounded-xl text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200 ${
+                isSearchFocused ? 'bg-white/80 shadow-lg' : ''
               }`}
             />
             {searchQuery && (
@@ -170,7 +170,7 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
             onClose={closeResults}
             onResultSelect={handleResultSelect}
             onCitySelect={handleCitySelect}
-            position="top"
+            position="bottom"
           />
           
         </div>
@@ -179,14 +179,14 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
         <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center space-x-2 p-2 hover:bg-accent rounded-lg transition-colors"
+            className="flex items-center space-x-1 p-1.5 hover:bg-white/20 rounded-xl transition-colors"
           >
-            <div className="h-8 w-8 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-primary-foreground text-sm font-medium">
+            <div className="h-7 w-7 bg-primary rounded-full flex items-center justify-center">
+              <span className="text-primary-foreground text-xs font-medium">
                 {user.username.charAt(0).toUpperCase()}
               </span>
             </div>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
           </button>
 
           {/* User Menu */}
@@ -196,7 +196,7 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
                 className="fixed inset-0 z-40"
                 onClick={() => setShowUserMenu(false)}
               />
-              <div className="absolute bottom-full right-0 mb-2 bg-popover rounded-lg shadow-lg border border-border py-2 min-w-48 z-50">
+              <div className="absolute top-full right-0 mt-2 bg-popover rounded-lg shadow-lg border border-border py-2 min-w-48 z-50">
                 <div className="px-4 py-2 border-b border-border">
                   <p className="text-sm font-medium text-popover-foreground">{user.username}</p>
                   <p className="text-xs text-muted-foreground">{user.companyAlias}</p>

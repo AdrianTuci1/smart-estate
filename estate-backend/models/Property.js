@@ -248,6 +248,93 @@ class Property {
       return { success: false, error: error.message };
     }
   }
+
+  // Get properties within coordinates range with pagination
+  static async getByCoordinatesWithPagination(companyId, bounds, limit = 50, lastKey = null) {
+    const params = {
+      TableName: TABLES.PROPERTIES,
+      IndexName: 'CompanyIdIndex',
+      KeyConditionExpression: 'companyId = :companyId',
+      FilterExpression: 'coordinates.lat BETWEEN :minLat AND :maxLat AND coordinates.lng BETWEEN :minLng AND :maxLng',
+      ExpressionAttributeValues: {
+        ':companyId': companyId,
+        ':minLat': bounds.south,
+        ':maxLat': bounds.north,
+        ':minLng': bounds.west,
+        ':maxLng': bounds.east
+      },
+      Limit: limit,
+      ScanIndexForward: false
+    };
+
+    if (lastKey) {
+      params.ExclusiveStartKey = lastKey;
+    }
+
+    try {
+      const result = await dynamoDB.query(params).promise();
+      return { 
+        success: true, 
+        data: result.Items,
+        lastKey: result.LastEvaluatedKey,
+        hasMore: !!result.LastEvaluatedKey
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Get properties within coordinates range with filters and pagination
+  static async getByCoordinatesWithFilters(companyId, bounds, filters = {}, limit = 50, lastKey = null) {
+    const params = {
+      TableName: TABLES.PROPERTIES,
+      IndexName: 'CompanyIdIndex',
+      KeyConditionExpression: 'companyId = :companyId',
+      FilterExpression: 'coordinates.lat BETWEEN :minLat AND :maxLat AND coordinates.lng BETWEEN :minLng AND :maxLng',
+      ExpressionAttributeValues: {
+        ':companyId': companyId,
+        ':minLat': bounds.south,
+        ':maxLat': bounds.north,
+        ':minLng': bounds.west,
+        ':maxLng': bounds.east
+      },
+      Limit: limit,
+      ScanIndexForward: false
+    };
+
+    // Add search filter
+    if (filters.search) {
+      params.FilterExpression += ' AND (contains(#name, :searchTerm) OR contains(address, :searchTerm))';
+      params.ExpressionAttributeNames = {
+        '#name': 'name'
+      };
+      params.ExpressionAttributeValues[':searchTerm'] = filters.search;
+    }
+
+    // Add status filter
+    if (filters.status) {
+      params.FilterExpression += ' AND #status = :status';
+      if (!params.ExpressionAttributeNames) params.ExpressionAttributeNames = {};
+      params.ExpressionAttributeNames['#status'] = 'status';
+      params.ExpressionAttributeValues[':status'] = filters.status;
+    }
+
+    if (lastKey) {
+      params.ExclusiveStartKey = lastKey;
+    }
+
+    try {
+      const result = await dynamoDB.query(params).promise();
+      return { 
+        success: true, 
+        data: result.Items,
+        lastKey: result.LastEvaluatedKey,
+        hasMore: !!result.LastEvaluatedKey
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = Property;

@@ -242,7 +242,7 @@ const PropertyDescription = ({
           />
         ) : (
           <p className="text-gray-600 text-sm leading-relaxed">
-            {formData.description || `${formData.name} este o proprietate modernă situată într-o zonă rezidențială de prestigiu. Complexul oferă apartamente spațioase cu design contemporan și finisaje de calitate superioară.`}
+            {formData.description || `Nu exista descriere`}. 
           </p>
         )}
       </div>

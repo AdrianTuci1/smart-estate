@@ -60,22 +60,51 @@ class ApiService {
     });
   }
 
-  // Properties methods
+  // Properties methods with pagination support
   async getProperties(params = {}) {
     const queryString = new URLSearchParams(params).toString();
     const endpoint = queryString ? `/api/properties?${queryString}` : '/api/properties';
     return this.request(endpoint);
   }
 
-  async getPropertiesByBounds(bounds) {
+  async getPropertiesByBounds(bounds, pagination = {}) {
     const { north, south, east, west } = bounds;
+    const { page = 1, limit = 50, lastKey } = pagination;
+    
     const params = new URLSearchParams({
       north: north.toString(),
       south: south.toString(),
       east: east.toString(),
-      west: west.toString()
+      west: west.toString(),
+      page: page.toString(),
+      limit: limit.toString()
     });
+    
+    if (lastKey) {
+      params.append('lastKey', lastKey);
+    }
+    
     return this.request(`/api/properties/map/bounds?${params.toString()}`);
+  }
+
+  async getPropertiesByBoundsWithSearch(bounds, searchParams = {}) {
+    const { north, south, east, west } = bounds;
+    const { search, status, page = 1, limit = 50, lastKey } = searchParams;
+    
+    const params = new URLSearchParams({
+      north: north.toString(),
+      south: south.toString(),
+      east: east.toString(),
+      west: west.toString(),
+      page: page.toString(),
+      limit: limit.toString()
+    });
+    
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    if (lastKey) params.append('lastKey', lastKey);
+    
+    return this.request(`/api/properties/map/search?${params.toString()}`);
   }
 
   async getProperty(id) {

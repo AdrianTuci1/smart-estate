@@ -63,18 +63,27 @@ const PropertyMap = () => {
   }, [map, showPOIs]);
 
   // Load properties from API
-  const loadProperties = async (bounds = null) => {
+  const loadProperties = async (bounds = null, isLoadMore = false) => {
     try {
-      setIsLoading(true);
+      if (!isLoadMore) {
+        setIsLoading(true);
+      }
       setError(null);
       
       let response;
       if (bounds) {
-        // Load properties for specific bounds
-        response = await apiService.getPropertiesByBounds(bounds);
+        // Load properties for specific bounds with pagination
+        response = await apiService.getPropertiesByBounds(bounds, {
+          page: 1,
+          limit: 20, // Load more properties for map view
+          lastKey: null // For now, load all in bounds
+        });
       } else {
         // Load all properties (initial load)
-        response = await apiService.getProperties();
+        response = await apiService.getProperties({
+          page: 1,
+          limit: 100
+        });
       }
       
       if (response.success && response.data) {
@@ -93,11 +102,14 @@ const PropertyMap = () => {
           setProperties(prevProperties => {
             const existingIds = new Set(prevProperties.map(p => p.id));
             const newProperties = propertiesWithPosition.filter(p => !existingIds.has(p.id));
-            return [...prevProperties, ...newProperties];
+            const merged = [...prevProperties, ...newProperties];
+            console.log(`Map: Loaded ${newProperties.length} new properties, total: ${merged.length}`);
+            return merged;
           });
         } else {
           // Replace all properties (initial load)
           setProperties(propertiesWithPosition);
+          console.log(`Map: Initial load of ${propertiesWithPosition.length} properties`);
         }
       } else {
         if (!bounds) {
@@ -118,15 +130,22 @@ const PropertyMap = () => {
   };
 
   useEffect(() => {
-    // Only load properties if store is empty
-    if (storeProperties.length === 0) {
-      loadProperties();
-    } else {
-      setIsLoading(false);
-    }
+    // Load properties on initial mount
+    const initializeProperties = async () => {
+      if (storeProperties.length === 0) {
+        // Load all properties initially for better user experience
+        console.log('Map: Loading all properties initially...');
+        await loadProperties();
+      } else {
+        console.log(`Map: Using ${storeProperties.length} properties from store`);
+        setIsLoading(false);
+      }
+    };
+    
+    initializeProperties();
     // Load saved map view from localStorage
     loadMapView();
-  }, [storeProperties.length]);
+  }, []);
 
   // No need to sync marker selection - ClusterMarkerManager handles this directly with selectedProperty
 
@@ -204,11 +223,12 @@ const PropertyMap = () => {
     const newLatSpan = newBounds.north - newBounds.south;
     const newLngSpan = newBounds.east - newBounds.west;
     
-    // If less than 30% overlap in either direction, consider it significant
+    // If less than 50% overlap in either direction, consider it significant
+    // Reduced threshold for more frequent loading
     const latOverlapRatio = latOverlap > 0 ? latOverlap / newLatSpan : 0;
     const lngOverlapRatio = lngOverlap > 0 ? lngOverlap / newLngSpan : 0;
     
-    return latOverlapRatio < 0.3 || lngOverlapRatio < 0.3;
+    return latOverlapRatio < 0.5 || lngOverlapRatio < 0.5;
   }, []);
 
   // Handle map view changes (center and zoom) with debouncing
@@ -259,7 +279,7 @@ const PropertyMap = () => {
             boundsChangeTimeout.current = setTimeout(() => {
               loadProperties(newBounds);
               lastLoadedBounds.current = newBounds;
-            }, 1000); // 1 second debounce for bounds changes
+            }, 500); // 500ms debounce for bounds changes
           }
         }
       }

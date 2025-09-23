@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Building2, MapPin, Plus, Eye, FileText, Users, FileImage } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { Building2, MapPin, Plus, Eye, FileText, Users, FileImage, ChevronDown } from 'lucide-react';
 import apiService from '../services/api';
 import useAppStore from '../stores/useAppStore';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,39 +19,107 @@ const PropertiesList = ({ searchTerm = '' }) => {
   const [sortDirection, setSortDirection] = useState('asc');
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    hasMore: false,
+    lastKey: null
+  });
+  const [allProperties, setAllProperties] = useState([]);
+  const observerRef = useRef(null);
 
-  // Load properties from API
-  useEffect(() => {
-    const loadProperties = async () => {
-      try {
+  // Load properties from API with pagination
+  const loadProperties = useCallback(async (isLoadMore = false) => {
+    try {
+      if (isLoadMore) {
+        setIsLoadingMore(true);
+      } else {
         setIsLoading(true);
-        setError(null);
-        const response = await apiService.getProperties();
-        
-        if (response.success && response.data) {
-          setProperties(response.data);
-        } else {
-          setError('Nu s-au putut încărca proprietățile');
-        }
-      } catch (err) {
-        console.error('Failed to load properties:', err);
-        setError('Eroare la încărcarea proprietăților');
-      } finally {
-        setIsLoading(false);
+        setAllProperties([]);
+        setPagination(prev => ({ ...prev, page: 1, lastKey: null }));
       }
-    };
+      
+      setError(null);
+      
+      const params = {
+        page: isLoadMore ? pagination.page + 1 : 1,
+        limit: pagination.limit,
+        ...(pagination.lastKey && isLoadMore && { lastKey: pagination.lastKey })
+      };
+      
+      const response = await apiService.getProperties(params);
+      
+      if (response.success && response.data) {
+        if (isLoadMore) {
+          setAllProperties(prev => [...prev, ...response.data]);
+        } else {
+          setAllProperties(response.data);
+        }
+        
+        setPagination({
+          page: response.pagination.page,
+          limit: response.pagination.limit,
+          hasMore: response.pagination.hasMore,
+          lastKey: response.pagination.lastKey
+        });
+        
+        // Update store with all properties for compatibility
+        setProperties(isLoadMore ? [...allProperties, ...response.data] : response.data);
+      } else {
+        setError('Nu s-au putut încărca proprietățile');
+      }
+    } catch (err) {
+      console.error('Failed to load properties:', err);
+      setError('Eroare la încărcarea proprietăților');
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [pagination, allProperties, setProperties]);
 
-    // Only load if we don't have properties already
+  // Load more properties
+  const loadMoreProperties = useCallback(() => {
+    if (pagination.hasMore && !isLoadingMore) {
+      loadProperties(true);
+    }
+  }, [pagination.hasMore, isLoadingMore, loadProperties]);
+
+  // Initial load
+  useEffect(() => {
     if (properties.length === 0) {
-      loadProperties();
+      loadProperties(false);
     } else {
+      setAllProperties(properties);
       setIsLoading(false);
     }
-  }, [properties.length, setProperties]);
+  }, []);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && pagination.hasMore && !isLoadingMore) {
+          loadMoreProperties();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observer.unobserve(observerRef.current);
+      }
+    };
+  }, [pagination.hasMore, isLoadingMore, loadMoreProperties]);
 
   const filteredAndSortedProperties = useMemo(() => {
-    let filtered = properties.filter(property =>
+    let filtered = allProperties.filter(property =>
       property.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property.status?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -62,15 +130,35 @@ const PropertiesList = ({ searchTerm = '' }) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
       
-      if (sortDirection === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
+      // Handle null/undefined values
+      if (!aValue && !bValue) return 0;
+      if (!aValue) return 1;
+      if (!bValue) return -1;
+      
+      // For string fields (name, address, status), use localeCompare for proper alphabetical sorting
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        const result = aValue.localeCompare(bValue, 'ro', { 
+          sensitivity: 'base',
+          numeric: true 
+        });
+        return sortDirection === 'asc' ? result : -result;
       }
+      
+      // For numeric fields, use numeric comparison
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      
+      // Fallback to string comparison
+      const result = String(aValue).localeCompare(String(bValue), 'ro', { 
+        sensitivity: 'base',
+        numeric: true 
+      });
+      return sortDirection === 'asc' ? result : -result;
     });
 
     return filtered;
-  }, [properties, searchTerm, sortField, sortDirection]);
+  }, [allProperties, searchTerm, sortField, sortDirection]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -255,6 +343,31 @@ const PropertiesList = ({ searchTerm = '' }) => {
                 ))}
               </tbody>
             </table>
+            
+            {/* Load More Section */}
+            {pagination.hasMore && (
+              <div className="p-4 border-t border-gray-200">
+                <div className="flex justify-center">
+                  {isLoadingMore ? (
+                    <div className="flex items-center space-x-2 text-gray-500">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                      <span>Se încarcă mai multe proprietăți...</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={loadMoreProperties}
+                      className="btn btn-outline flex items-center space-x-2 px-6 py-2"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                      <span>Încarcă mai multe ({pagination.hasMore ? 'da' : 'nu'})</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Intersection Observer Target */}
+            <div ref={observerRef} className="h-1" />
           </div>
         </div>
       )}
