@@ -6,6 +6,38 @@ import useAppStore from '../stores/useAppStore';
 import useFileViewerStore from '../stores/useFileViewerStore';
 import { ExcelViewer, GoogleSheetsViewer, GoogleDocsViewer, PDFViewer, getDocumentViewerType, isDocumentViewable } from './DocumentViewers';
 
+// Function to get the appropriate preview icon for a file
+const getPreviewIcon = (item, size = 'h-8 w-8') => {
+  if (item.isGoogleSheet) {
+    return <img src="/sheet.png" alt="Google Sheets" className={size} />;
+  }
+  
+  if (item.isGoogleDoc) {
+    return <img src="/google-docs.png" alt="Google Docs" className={size} />;
+  }
+  
+  const fileName = item.name || item.alt || '';
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  
+  // Use PDF icon for PDF files
+  if (extension === 'pdf') {
+    return <img src="/pdf.png" alt="PDF" className={size} />;
+  }
+  
+  // Use Google Docs icon for Word documents
+  if (['doc', 'docx'].includes(extension)) {
+    return <img src="/google-docs.png" alt="Document" className={size} />;
+  }
+  
+  // Use sheet icon for Excel files
+  if (['xls', 'xlsx', 'csv'].includes(extension)) {
+    return <img src="/sheet.png" alt="Spreadsheet" className={size} />;
+  }
+  
+  // Return null to fall back to default icons for other types
+  return null;
+};
+
 const PropertyFileViewer = () => {
   const { selectedProperty } = useAppStore();
   const { 
@@ -131,14 +163,10 @@ const PropertyFileViewer = () => {
       return <ImageIcon className="h-8 w-8 text-blue-500" />;
     }
     
-    // Handle Google Sheets specifically
-    if (item.isGoogleSheet || item.type === 'GOOGLE_SHEET') {
-      return <Sheet className="h-8 w-8 text-green-600" />;
-    }
-    
-    // Handle Google Docs specifically
-    if (item.isGoogleDoc || item.type === 'GOOGLE_DOC') {
-      return <FileText className="h-8 w-8 text-blue-600" />;
+    // Try to get preview icon first
+    const previewIcon = getPreviewIcon(item);
+    if (previewIcon) {
+      return previewIcon;
     }
     
     const fileName = item.name || item.alt || '';
@@ -147,20 +175,14 @@ const PropertyFileViewer = () => {
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(extension)) {
       return <ImageIcon className="h-8 w-8 text-blue-500" />;
     }
-    if (['pdf'].includes(extension)) {
-      return <FileText className="h-8 w-8 text-red-500" />;
-    }
     if (['mp4', 'avi', 'mov', 'wmv'].includes(extension)) {
       return <FileVideo className="h-8 w-8 text-purple-500" />;
     }
     if (['mp3', 'wav', 'flac'].includes(extension)) {
       return <FileAudio className="h-8 w-8 text-green-500" />;
     }
-    if (['doc', 'docx', 'txt', 'rtf'].includes(extension)) {
+    if (['txt', 'rtf'].includes(extension)) {
       return <FileText className="h-8 w-8 text-blue-600" />;
-    }
-    if (['xls', 'xlsx', 'xlsm', 'xlsb', 'csv'].includes(extension)) {
-      return <Sheet className="h-8 w-8 text-green-600" />;
     }
     
     return <File className="h-8 w-8 text-gray-500" />;

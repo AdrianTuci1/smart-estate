@@ -136,9 +136,13 @@ const PropertyMap = () => {
         // Load all properties initially for better user experience
         console.log('Map: Loading all properties initially...');
         await loadProperties();
+        // Set a flag to indicate initial load is complete
+        lastLoadedBounds.current = 'initial_load_complete';
       } else {
         console.log(`Map: Using ${storeProperties.length} properties from store`);
         setIsLoading(false);
+        // Set a flag to indicate we're using existing properties
+        lastLoadedBounds.current = 'using_existing_properties';
       }
     };
     
@@ -215,6 +219,9 @@ const PropertyMap = () => {
 
   // Check if bounds have changed significantly
   const hasBoundsChangedSignificantly = useCallback((newBounds, lastBounds) => {
+    // If lastBounds is a string (initial load flags), don't trigger bounds-based loading
+    if (typeof lastBounds === 'string') return false;
+    
     if (!lastBounds) return true;
     
     const latOverlap = Math.min(newBounds.north, lastBounds.north) - Math.max(newBounds.south, lastBounds.south);

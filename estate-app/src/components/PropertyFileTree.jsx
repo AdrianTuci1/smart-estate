@@ -7,6 +7,37 @@ import { handleFileAction, getFileIcon, getFileAction } from '../utils/fileHandl
 import useFileViewerStore from '../stores/useFileViewerStore';
 import useAuthStore from '../stores/useAuthStore';
 
+// Function to get the appropriate preview icon for a file
+const getPreviewIcon = (file) => {
+  if (file.isGoogleSheet) {
+    return <img src="/sheet.png" alt="Google Sheets" className="h-4 w-4" />;
+  }
+  
+  if (file.isGoogleDoc) {
+    return <img src="/google-docs.png" alt="Google Docs" className="h-4 w-4" />;
+  }
+  
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  
+  // Use PDF icon for PDF files
+  if (extension === 'pdf') {
+    return <img src="/pdf.png" alt="PDF" className="h-4 w-4" />;
+  }
+  
+  // Use Google Docs icon for Word documents
+  if (['doc', 'docx'].includes(extension)) {
+    return <img src="/google-docs.png" alt="Document" className="h-4 w-4" />;
+  }
+  
+  // Use sheet icon for Excel files
+  if (['xls', 'xlsx', 'csv'].includes(extension)) {
+    return <img src="/sheet.png" alt="Spreadsheet" className="h-4 w-4" />;
+  }
+  
+  // Default to generic file icon for other types
+  return <File className="h-4 w-4" />;
+};
+
 const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
   const { setAllFiles, addFileOptimistic, removeFileOptimistic } = useFileViewerStore();
   const { user } = useAuthStore();
@@ -166,7 +197,7 @@ const PropertyFileTree = ({ selectedProperty, onFileClick }) => {
                 </div>
               </div>
             ),
-            icon: file.isGoogleSheet ? <FileSpreadsheet className="h-4 w-4" /> : <File className="h-4 w-4" />,
+            icon: getPreviewIcon(file),
             data: file
           }))
         });
