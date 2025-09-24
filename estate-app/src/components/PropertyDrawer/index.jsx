@@ -206,10 +206,10 @@ const PropertyDrawer = () => {
   };
 
   return (
-    <div className="absolute inset-y-0 right-0 z-50 w-96 bg-white/95 backdrop-blur-sm shadow-drawer transform transition-all duration-300 ease-in-out translate-x-0">
+    <div className="absolute inset-y-0 right-0 z-50 w-full md:w-96 bg-white/95 backdrop-blur-sm shadow-drawer transform transition-all duration-300 ease-in-out translate-x-0">
       <div className="flex flex-col h-full">
         {/* Header with Close, Edit and Delete buttons */}
-        <div className={`flex items-center p-4 border-b border-gray-200 ${
+        <div className={`flex items-center p-3 md:p-4 border-b border-gray-200 ${
           isEditing || isCreating 
             ? 'justify-end space-x-2' 
             : 'justify-between'
@@ -218,45 +218,48 @@ const PropertyDrawer = () => {
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className={`flex items-center space-x-1 px-3 py-1 text-sm rounded-lg transition-colors ${
+              className={`flex items-center space-x-1 px-2 md:px-3 py-1 text-xs md:text-sm rounded-lg transition-colors ${
                 isSaving 
                   ? 'bg-gray-400 text-white cursor-not-allowed' 
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
-              <Save className="h-4 w-4" />
-              <span>
+              <Save className="h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">
                 {isSaving 
                   ? (isCreating ? 'Se creează...' : 'Se salvează...') 
                   : (isCreating ? 'Creează' : 'Salvează')
                 }
               </span>
+              <span className="sm:hidden">
+                {isSaving ? '...' : '✓'}
+              </span>
             </button>
           ) : (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 md:space-x-2">
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center space-x-1 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center space-x-1 px-2 md:px-3 py-1 text-xs md:text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <Edit3 className="h-4 w-4" />
-                <span>Editează</span>
+                <Edit3 className="h-3 w-3 md:h-4 md:w-4" />
+                <span className="hidden sm:inline">Editează</span>
               </button>
               {selectedProperty && selectedProperty.id && (
                 <button
                   onClick={handleDelete}
-                  className="flex items-center space-x-1 px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                  className="flex items-center space-x-1 px-2 md:px-3 py-1 text-xs md:text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  <span>Șterge</span>
+                  <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden sm:inline">Șterge</span>
                 </button>
               )}
             </div>
           )}
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="h-5 w-5 text-gray-500" />
+            <X className="h-4 w-4 md:h-5 md:w-5 text-gray-500" />
           </button>
         </div>
 

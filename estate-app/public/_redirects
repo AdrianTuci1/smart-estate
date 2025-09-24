@@ -1,0 +1,2 @@
+# Redirect manifest.json to manifest.webmanifest for PWA compatibility
+/manifest.json /manifest.webmanifest 200

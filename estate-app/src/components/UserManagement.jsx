@@ -170,18 +170,22 @@ const UserManagement = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      {/* Small spacing on mobile */}
+      <div className="h-6 md:hidden"></div>
+      
+      <div className="flex items-center justify-between mb-4 md:mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-base md:text-lg font-semibold text-gray-900">
             Lista Utilizatori
           </h3>
-          <p className="text-gray-600 text-sm mt-1">
+          <p className="text-gray-600 text-xs md:text-sm mt-1">
             {users.length} utilizatori în sistem
           </p>
         </div>
+        {/* Desktop Add Button */}
         <button
           onClick={() => setShowCreateDrawer(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors duration-200"
+          className="hidden md:flex bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg items-center space-x-2 transition-colors duration-200"
         >
           <UserPlus className="h-4 w-4" />
           <span>Adaugă Utilizator</span>
@@ -204,26 +208,26 @@ const UserManagement = () => {
           />
           
           {/* Drawer */}
-          <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
+          <div className="fixed right-0 top-0 h-full w-full md:w-96 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out">
             <div className="flex flex-col h-full">
               {/* Header */}
-              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <div className="px-4 md:px-6 py-3 md:py-4 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-base md:text-lg font-semibold text-gray-900">
                     {editingUser ? 'Editează Utilizator' : 'Utilizator Nou'}
                   </h3>
                   <button
                     onClick={resetForm}
-                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+                    className="p-1.5 md:p-2 hover:bg-gray-200 rounded-lg transition-colors duration-200"
                   >
-                    <X className="h-5 w-5 text-gray-500" />
+                    <X className="h-4 w-4 md:h-5 md:w-5 text-gray-500" />
                   </button>
                 </div>
               </div>
 
               {/* Form */}
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="space-y-6">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6">
+                <div className="space-y-4 md:space-y-6">
                   <div>
                     <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
                       Nume Utilizator
@@ -290,20 +294,21 @@ const UserManagement = () => {
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-                <div className="flex space-x-3">
+              <div className="px-4 md:px-6 py-3 md:py-4 border-t border-gray-200 bg-gray-50">
+                <div className="flex space-x-2 md:space-x-3">
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       handleSubmit(e);
                     }}
                     disabled={isSubmitting}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors duration-200"
+                    className="flex-1 bg-primary hover:bg-primary/90 disabled:bg-primary/60 text-primary-foreground px-3 md:px-4 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors duration-200 text-sm"
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Se salvează...</span>
+                        <div className="animate-spin rounded-full h-3 w-3 md:h-4 md:w-4 border-b-2 border-white"></div>
+                        <span className="hidden sm:inline">Se salvează...</span>
+                        <span className="sm:hidden">...</span>
                       </>
                     ) : (
                       <span>{editingUser ? 'Actualizează' : 'Creează'}</span>
@@ -311,7 +316,7 @@ const UserManagement = () => {
                   </button>
                   <button
                     onClick={resetForm}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                    className="px-3 md:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200 text-sm"
                   >
                     Anulează
                   </button>
@@ -341,33 +346,33 @@ const UserManagement = () => {
         ) : (
           <div className="divide-y divide-gray-200">
             {users.map((userData) => (
-              <div key={userData.id} className="px-6 py-5 flex items-center justify-between hover:bg-gray-50 transition-colors duration-200">
+              <div key={userData.id} className="px-4 md:px-6 py-4 md:py-5 flex items-center justify-between hover:bg-gray-50 transition-colors duration-200">
                 <div className="flex items-center">
                     <div className="flex-shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                    <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-primary-100 flex items-center justify-center">
                       {userData.role === 'admin' ? (
-                        <Shield className="h-5 w-5 text-primary-600" />
+                        <Shield className="h-4 w-4 md:h-5 md:w-5 text-primary-600" />
                       ) : userData.role === 'Moderator' ? (
-                        <UserCog className="h-5 w-5 text-primary-600" />
+                        <UserCog className="h-4 w-4 md:h-5 md:w-5 text-primary-600" />
                       ) : userData.role === 'PowerUser' ? (
-                        <Users className="h-5 w-5 text-primary-600" />
+                        <Users className="h-4 w-4 md:h-5 md:w-5 text-primary-600" />
                       ) : (
-                        <User className="h-5 w-5 text-primary-600" />
+                        <User className="h-4 w-4 md:h-5 md:w-5 text-primary-600" />
                       )}
                     </div>
                   </div>
-                  <div className="ml-4">
+                  <div className="ml-3 md:ml-4">
                     <div className="flex items-center">
                       <p className="text-sm font-medium text-gray-900">
                         {userData.username}
                       </p>
                       {userData.id === user?.id && (
-                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           Tu
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500 capitalize">
+                    <p className="text-xs md:text-sm text-gray-500 capitalize">
                       {userData.role === 'admin' ? 'Administrator' : 
                        userData.role === 'Moderator' ? 'Moderator' :
                        userData.role === 'PowerUser' ? 'Power User' : 'User'}
@@ -375,17 +380,17 @@ const UserManagement = () => {
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center space-x-0.5 md:space-x-1">
                   {/* Edit button - admins can edit everyone except self, moderators can edit non-moderators */}
                   {userData.id !== user?.id && 
                    ((user?.role === 'admin') || 
                     (user?.role === 'Moderator' && userData.role !== 'Moderator' && userData.role !== 'admin')) && (
                     <button
                       onClick={() => startEdit(userData)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                      className="p-1.5 md:p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
                       title="Editează utilizator"
                     >
-                      <Edit className="h-4 w-4" />
+                      <Edit className="h-3 w-3 md:h-4 md:w-4" />
                     </button>
                   )}
                   
@@ -395,17 +400,17 @@ const UserManagement = () => {
                     (user?.role === 'Moderator' && userData.role !== 'Moderator' && userData.role !== 'admin')) && (
                     <button
                       onClick={() => handleDelete(userData.id, userData.username, userData.role)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+                      className="p-1.5 md:p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
                       title={userData.role === 'admin' ? 'Șterge administrator' : 'Șterge utilizator'}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
                     </button>
                   )}
                   
                   {/* Show lock icon only for current user */}
                   {userData.id === user?.id && (
-                    <div className="p-2 text-gray-300" title="Nu poți edita sau șterge propriul cont">
-                      <Lock className="h-4 w-4" />
+                    <div className="p-1.5 md:p-2 text-gray-300" title="Nu poți edita sau șterge propriul cont">
+                      <Lock className="h-3 w-3 md:h-4 md:w-4" />
                     </div>
                   )}
                 </div>
@@ -414,6 +419,18 @@ const UserManagement = () => {
           </div>
         )}
       </div>
+
+      {/* Floating Add Button for Mobile - hidden when drawer is open */}
+      {!showCreateDrawer && (
+        <button 
+          onClick={() => setShowCreateDrawer(true)}
+          className="fixed bottom-10 left-1/2 transform -translate-x-1/2 md:hidden z-50 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-4 py-3 shadow-2xl transition-all duration-200 hover:scale-110 border-2 border-white flex items-center space-x-2"
+          title="Adaugă Utilizator"
+        >
+          <UserPlus className="h-4 w-4" />
+          <span className="text-sm font-medium">Adaugă</span>
+        </button>
+      )}
     </div>
   );
 };

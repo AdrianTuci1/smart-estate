@@ -208,8 +208,11 @@ const PropertiesList = ({ searchTerm = '' }) => {
 
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
+      {/* Small spacing on mobile */}
+      <div className="h-8 md:hidden"></div>
+      
+      {/* Header - hidden on mobile to avoid dock overlap */}
+      <div className="hidden md:block p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Building2 className="h-6 w-6 text-primary-600" />
@@ -218,6 +221,7 @@ const PropertiesList = ({ searchTerm = '' }) => {
               {filteredAndSortedProperties.length}
             </span>
           </div>
+          {/* Desktop Add Button */}
           {['admin', 'Moderator', 'PowerUser'].includes(user?.role) && (
             <button 
               onClick={handleCreateProperty}
@@ -259,7 +263,7 @@ const PropertiesList = ({ searchTerm = '' }) => {
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
                   <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('name')}
                   >
                     <div className="flex items-center space-x-1">
@@ -268,7 +272,7 @@ const PropertiesList = ({ searchTerm = '' }) => {
                     </div>
                   </th>
                   <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('status')}
                   >
                     <div className="flex items-center space-x-1">
@@ -276,8 +280,9 @@ const PropertiesList = ({ searchTerm = '' }) => {
                       {getSortIcon('status')}
                     </div>
                   </th>
+                  {/* Hide address column on mobile */}
                   <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('address')}
                   >
                     <div className="flex items-center space-x-1">
@@ -285,7 +290,8 @@ const PropertiesList = ({ searchTerm = '' }) => {
                       {getSortIcon('address')}
                     </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {/* Hide actions column on mobile */}
+                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Acțiuni
                   </th>
                 </tr>
@@ -299,25 +305,29 @@ const PropertiesList = ({ searchTerm = '' }) => {
                     }`}
                     onClick={() => handlePropertyClick(property)}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                          <Building2 className="h-5 w-5 text-primary-600" />
+                        <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                          <Building2 className="h-4 w-4 md:h-5 md:w-5 text-primary-600" />
                         </div>
-                        <div className="ml-4">
+                        <div className="ml-3 md:ml-4">
                           <div className="text-sm font-medium text-gray-900">
                             {property.name}
                           </div>
-
+                          {/* Show address on mobile as subtitle */}
+                          <div className="md:hidden text-xs text-gray-500 truncate max-w-32">
+                            {property.address}
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(property.status)}`}>
+                    <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 md:px-2.5 md:py-0.5 rounded-full text-xs font-medium ${getStatusColor(property.status)}`}>
                         {property.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    {/* Hide address column on mobile */}
+                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center text-sm text-gray-900">
                         <MapPin className="h-4 w-4 text-gray-400 mr-2" />
                         <span className="truncate max-w-xs">
@@ -325,7 +335,8 @@ const PropertiesList = ({ searchTerm = '' }) => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {/* Hide actions column on mobile */}
+                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={(e) => {
@@ -385,6 +396,18 @@ const PropertiesList = ({ searchTerm = '' }) => {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Floating Add Button for Mobile */}
+      {['admin', 'Moderator', 'PowerUser'].includes(user?.role) && (
+        <button 
+          onClick={handleCreateProperty}
+          className="fixed bottom-10 left-1/2 transform -translate-x-1/2 md:hidden z-50 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-4 py-3 shadow-2xl transition-all duration-200 hover:scale-110 border-2 border-white flex items-center space-x-2"
+          title="Adaugă Proprietate"
+        >
+          <Plus className="h-4 w-4" />
+          <span className="text-sm font-medium">Adaugă</span>
+        </button>
       )}
     </div>
   );

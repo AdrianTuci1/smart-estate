@@ -187,7 +187,8 @@ const PropertyMap = () => {
 
   const mapContainerStyle = {
     width: '100%',
-    height: '100%'
+    height: '100%',
+    touchAction: 'pan-x pan-y pinch-zoom'
   };
 
   // Use mapCenter and mapZoom from store, fallback to default if not set
@@ -386,7 +387,7 @@ const PropertyMap = () => {
 
 
   return (
-    <div className="w-full h-full relative">
+    <div className="mobile-map-container mobile-full-height prevent-pull-refresh">
       <ErrorOverlay error={error} />
 
       <GoogleMap
@@ -405,7 +406,11 @@ const PropertyMap = () => {
           streetViewControl: false,
           mapTypeControl: false,
           fullscreenControl: true,
-          clickableIcons: !isAddingProperty // Disable POI clicks when adding property
+          clickableIcons: !isAddingProperty, // Disable POI clicks when adding property
+          gestureHandling: 'greedy', // Allow map to consume all touch events
+          zoomControlOptions: {
+            position: window.google?.maps?.ControlPosition?.RIGHT_BOTTOM
+          }
         }}
       >
         <EfficientClusterManager
@@ -424,10 +429,13 @@ const PropertyMap = () => {
 
       <AddPropertyInstructions isAddingProperty={isAddingProperty} />
 
-      <MapControls
-        showPOIs={showPOIs}
-        setShowPOIs={setShowPOIs}
-      />
+      {/* Map Controls - hidden on mobile */}
+      <div className="hidden md:block">
+        <MapControls
+          showPOIs={showPOIs}
+          setShowPOIs={setShowPOIs}
+        />
+      </div>
     </div>
   );
 };

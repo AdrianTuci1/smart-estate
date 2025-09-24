@@ -366,60 +366,60 @@ const PropertyFileViewer = () => {
       />
       
       {/* Viewer Panel */}
-      <div className="fixed inset-y-0 bg-white z-50 flex flex-col shadow-2xl border-r border-gray-200 transform transition-transform" style={{ left: 0, right: '384px' }}>
+      <div className="mobile-file-viewer mobile-full-height prevent-pull-refresh fixed inset-y-0 left-0 right-0 md:right-96 bg-white z-50 flex flex-col shadow-2xl border-r border-gray-200 transform transition-transform">
         {/* Header */}
-        <div className="bg-gray-50 border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3">
+        <div className="bg-gray-50 border-b border-gray-200 p-3 md:p-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center space-x-2 md:space-x-4">
+            <div className="flex items-center space-x-2 md:space-x-3">
               {currentItem && getItemIcon(currentItem)}
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 truncate max-w-md">
+                <h2 className="text-sm md:text-lg font-semibold text-gray-900 truncate max-w-xs md:max-w-md">
                   {currentItem?.name || currentItem?.alt || (viewerType === 'gallery' ? 'Imagine' : 'Fișier')}
                 </h2>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs md:text-sm text-gray-600">
                   {viewerType === 'gallery' ? 'Imagine' : `${currentItem?.size || ''} • ${currentItem?.type || ''}`}
                 </p>
               </div>
             </div>
           </div>
         
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 md:space-x-4">
             {/* Item counter */}
             {items.length > 1 && (
-              <span className="text-sm text-gray-600">
+              <span className="text-xs md:text-sm text-gray-600">
                 {currentItemIndex + 1} / {items.length}
               </span>
             )}
           
             {/* Actions */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 md:space-x-2">
               <button
                 onClick={handleDownload}
-                className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                className="p-1.5 md:p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
                 title="Descarcă"
               >
-                <Download className="h-4 w-4 text-gray-700" />
+                <Download className="h-3 w-3 md:h-4 md:w-4 text-gray-700" />
               </button>
               <button
                 onClick={handleOpenInApp}
-                className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                className="p-1.5 md:p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
                 title="Deschide în aplicație"
               >
-                <ExternalLink className="h-4 w-4 text-gray-700" />
+                <ExternalLink className="h-3 w-3 md:h-4 md:w-4 text-gray-700" />
               </button>
               <button
                 onClick={handleDelete}
-                className="p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                className="p-1.5 md:p-2 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
                 title="Șterge"
               >
-                <Trash2 className="h-4 w-4 text-red-600" />
+                <Trash2 className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
               </button>
               <button
                 onClick={handleCloseFileViewer}
-                className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                className="p-1.5 md:p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
                 title="Închide"
               >
-                <X className="h-4 w-4 text-gray-700" />
+                <X className="h-3 w-3 md:h-4 md:w-4 text-gray-700" />
               </button>
             </div>
           </div>
@@ -464,7 +464,7 @@ const PropertyFileViewer = () => {
             <>
               {viewerType === 'gallery' && isGalleryPreviewMode ? (
                 // Gallery preview mode - show thumbnails grid
-                <div className="absolute inset-0 p-6 overflow-y-auto">
+                <div className="absolute inset-0 p-6 overflow-y-auto overscroll-contain">
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {items.map((item, index) => (
                       <div
@@ -590,6 +590,7 @@ const PropertyFileViewer = () => {
                               src={viewUrl}
                               className="w-full h-full border-0 rounded-lg bg-white shadow-lg"
                               title={currentItem.name}
+                              style={{ touchAction: 'manipulation' }}
                             />
                           </div>
                         );
@@ -602,6 +603,7 @@ const PropertyFileViewer = () => {
                           src={viewUrl}
                           className="w-full h-full border-0 rounded-lg bg-white shadow-lg"
                           title={currentItem.name}
+                          style={{ touchAction: 'manipulation' }}
                         />
                       </div>
                     );
@@ -632,12 +634,12 @@ const PropertyFileViewer = () => {
 
         {/* Item List (Bottom) - hidden for gallery mode */}
         {items.length > 1 && viewerType !== 'gallery' && (
-          <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
-            <div className="flex space-x-2 overflow-x-auto">
+          <div className="bg-white border-t border-gray-200 p-2 md:p-4 flex-shrink-0">
+            <div className="flex space-x-1 md:space-x-2 overflow-x-auto overscroll-x-contain">
               {items.map((item, index) => (
                 <div
                   key={item.id}
-                  className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden cursor-pointer border-2 transition-all duration-200 ${
+                  className={`flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-lg overflow-hidden cursor-pointer border-2 transition-all duration-200 ${
                     index === currentItemIndex 
                       ? 'border-primary ring-2 ring-primary/20' 
                       : 'border-gray-200 hover:border-gray-300'

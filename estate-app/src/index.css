@@ -57,6 +57,28 @@
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Prevent scrolling on mobile */
+    touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+
+  /* Prevent scrolling on mobile devices - but allow map to work */
+  html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+
+  #root {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 }
 
@@ -87,5 +109,48 @@
   
   .dock {
     @apply fixed top-4 left-1/2 transform -translate-x-1/2 bg-background/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20;
+  }
+
+  /* Mobile-specific styles for map and file viewer */
+  .mobile-map-container {
+    @apply w-full h-full;
+    touch-action: pan-x pan-y pinch-zoom;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+    overflow: visible;
+    min-height: 0; /* Allow flex child to shrink */
+    flex: 1; /* Take available space */
+  }
+
+  .mobile-file-viewer {
+    @apply w-full h-full;
+    touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent pull-to-refresh on mobile */
+  .prevent-pull-refresh {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+  }
+
+  /* Fix for mobile Safari address bar */
+  @supports (-webkit-touch-callout: none) {
+    .mobile-full-height {
+      height: -webkit-fill-available;
+    }
   }
 }

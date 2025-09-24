@@ -110,10 +110,10 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
   };
 
   return (
-    <div className={`dock px-4 py-1 transition-transform duration-300 ease-in-out ${
+    <div className={`dock px-6 md:px-4 py-1 transition-transform duration-300 ease-in-out ${
       isDrawerOpen ? '-translate-y-20' : 'translate-y-0'
     }`}>
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-3 md:space-x-3">
         {/* Navigation Buttons */}
         <div className="flex items-center space-x-1">
           <button
@@ -142,7 +142,7 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
         </div>
 
         {/* Search Bar */}
-        <div className="flex-1 max-w-sm">
+        <div className="flex-1 max-w-sm md:max-w-sm">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-muted-foreground" />
@@ -207,6 +207,8 @@ const NavigationDock = ({ onSearch, onResultSelect, onCitySelect, user, onLogout
                   <p className="text-sm font-medium text-popover-foreground">{user.username}</p>
                   <p className="text-xs text-muted-foreground">{user.companyAlias}</p>
                 </div>
+                
+
                 
                 {(user?.role === 'admin' || user?.role === 'moderator') && (
                   <button
