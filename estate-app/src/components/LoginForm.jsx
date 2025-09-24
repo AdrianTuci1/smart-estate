@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Building2, User, Lock, Eye, EyeOff } from 'lucide-react';
 import apiService from '../services/api';
 
@@ -11,6 +11,23 @@ const LoginForm = ({ onLogin, onShowCompanySetup }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [rememberCredentials, setRememberCredentials] = useState(false);
+
+  // Load saved credentials on component mount
+  useEffect(() => {
+    const savedCredentials = localStorage.getItem('savedCredentials');
+    const rememberMe = localStorage.getItem('rememberCredentials') === 'true';
+    
+    if (savedCredentials && rememberMe) {
+      try {
+        const credentials = JSON.parse(savedCredentials);
+        setFormData(credentials);
+        setRememberCredentials(true);
+      } catch (error) {
+        console.error('Error loading saved credentials:', error);
+      }
+    }
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,6 +63,22 @@ const LoginForm = ({ onLogin, onShowCompanySetup }) => {
         localStorage.setItem('authToken', token);
         localStorage.setItem('companyAlias', user.companyAlias);
         localStorage.setItem('username', user.username);
+        
+        // Save credentials if "remember me" is checked
+        if (rememberCredentials) {
+          // Save only companyAlias and username for security (not password)
+          const credentialsToSave = {
+            companyAlias: formData.companyAlias,
+            username: formData.username
+            // Note: We don't save the password for security reasons
+          };
+          localStorage.setItem('savedCredentials', JSON.stringify(credentialsToSave));
+          localStorage.setItem('rememberCredentials', 'true');
+        } else {
+          // Clear saved credentials if "remember me" is unchecked
+          localStorage.removeItem('savedCredentials');
+          localStorage.removeItem('rememberCredentials');
+        }
         
         onLogin({
           token,
@@ -160,6 +193,21 @@ const LoginForm = ({ onLogin, onShowCompanySetup }) => {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Remember Credentials Checkbox */}
+          <div className="flex items-center">
+            <input
+              id="rememberCredentials"
+              name="rememberCredentials"
+              type="checkbox"
+              checked={rememberCredentials}
+              onChange={(e) => setRememberCredentials(e.target.checked)}
+              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+            />
+            <label htmlFor="rememberCredentials" className="ml-2 block text-sm text-gray-700">
+              Reține credentialele
+            </label>
           </div>
 
           {error && (

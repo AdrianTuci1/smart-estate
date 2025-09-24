@@ -9,6 +9,7 @@ import AddPropertyInstructions from './AddPropertyInstructions';
 import ErrorOverlay from './ErrorOverlay';
 import LoadingSpinner from './LoadingSpinner';
 import EfficientClusterManager from './EfficientClusterManager';
+import { useMobileDetection } from '../../hooks/useMobileDetection';
 import './CustomMarkers.css';
 
 const PropertyMap = () => {
@@ -25,6 +26,8 @@ const PropertyMap = () => {
     properties: storeProperties,
     setProperties
   } = useAppStore();
+  
+  const { isMobile } = useMobileDetection();
   
   // Remove selectedMarker state - we'll use selectedProperty directly
   const [map, setMap] = useState(null);
@@ -70,6 +73,13 @@ const PropertyMap = () => {
       }
       setError(null);
       
+      // Check if user is authenticated
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+      
       let response;
       if (bounds) {
         // Load properties for specific bounds with pagination
@@ -103,13 +113,11 @@ const PropertyMap = () => {
             const existingIds = new Set(prevProperties.map(p => p.id));
             const newProperties = propertiesWithPosition.filter(p => !existingIds.has(p.id));
             const merged = [...prevProperties, ...newProperties];
-            console.log(`Map: Loaded ${newProperties.length} new properties, total: ${merged.length}`);
             return merged;
           });
         } else {
           // Replace all properties (initial load)
           setProperties(propertiesWithPosition);
-          console.log(`Map: Initial load of ${propertiesWithPosition.length} properties`);
         }
       } else {
         if (!bounds) {
@@ -132,14 +140,19 @@ const PropertyMap = () => {
   useEffect(() => {
     // Load properties on initial mount
     const initializeProperties = async () => {
+      // Check if user is authenticated before loading properties
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+      
       if (storeProperties.length === 0) {
         // Load all properties initially for better user experience
-        console.log('Map: Loading all properties initially...');
         await loadProperties();
         // Set a flag to indicate initial load is complete
         lastLoadedBounds.current = 'initial_load_complete';
       } else {
-        console.log(`Map: Using ${storeProperties.length} properties from store`);
         setIsLoading(false);
         // Set a flag to indicate we're using existing properties
         lastLoadedBounds.current = 'using_existing_properties';
@@ -149,7 +162,7 @@ const PropertyMap = () => {
     initializeProperties();
     // Load saved map view from localStorage
     loadMapView();
-  }, []);
+  }, []); // Keep empty dependency array for initial load only
 
   // No need to sync marker selection - ClusterMarkerManager handles this directly with selectedProperty
 
@@ -176,7 +189,6 @@ const PropertyMap = () => {
   // Reset adding property state when drawer is closed
   useEffect(() => {
     if (!isDrawerOpen) {
-      console.log('PropertyMap: Drawer closed, resetting adding property state');
       setIsAddingProperty(false);
       setNewPropertyPosition(null);
       setNewPropertyAddress('');
@@ -187,7 +199,8 @@ const PropertyMap = () => {
 
   const mapContainerStyle = {
     width: '100%',
-    height: '100%',
+    height: isMobile ? '100vh' : '100%',
+    minHeight: '100vh',
     touchAction: 'pan-x pan-y pinch-zoom'
   };
 
@@ -412,6 +425,7 @@ const PropertyMap = () => {
             position: window.google?.maps?.ControlPosition?.RIGHT_BOTTOM
           }
         }}
+        mapContainerClassName="google-map-container"
       >
         <EfficientClusterManager
           map={map}

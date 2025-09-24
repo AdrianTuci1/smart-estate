@@ -123,8 +123,11 @@
     -webkit-tap-highlight-color: transparent;
     position: relative;
     overflow: visible;
-    min-height: 0; /* Allow flex child to shrink */
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
     flex: 1; /* Take available space */
+    display: flex;
+    flex-direction: column;
   }
 
   .mobile-file-viewer {
@@ -151,6 +154,32 @@
   @supports (-webkit-touch-callout: none) {
     .mobile-full-height {
       height: -webkit-fill-available;
+    }
+  }
+
+  /* Ensure GoogleMap takes full height on mobile */
+  .google-map-container {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100vh;
+    min-height: 100dvh;
+    position: relative;
+  }
+
+  /* Mobile-specific map fixes */
+  @media (max-width: 768px) {
+    .mobile-map-container {
+      height: 100vh;
+      height: 100dvh;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+    
+    .google-map-container {
+      height: 100vh !important;
+      height: 100dvh !important;
+      min-height: 100vh !important;
+      min-height: 100dvh !important;
     }
   }
 }
