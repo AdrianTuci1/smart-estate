@@ -79,13 +79,16 @@ class ApiService {
       page: page.toString(),
       limit: limit.toString()
     });
-    
+
+
     if (lastKey) {
       params.append('lastKey', lastKey);
     }
     
     return this.request(`/api/properties/map/bounds?${params.toString()}`);
   }
+
+
 
   async getPropertiesByBoundsWithSearch(bounds, searchParams = {}) {
     const { north, south, east, west } = bounds;

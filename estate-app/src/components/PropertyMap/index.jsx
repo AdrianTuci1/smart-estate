@@ -82,18 +82,21 @@ const PropertyMap = () => {
       
       let response;
       if (bounds) {
+
         // Load properties for specific bounds with pagination
         response = await apiService.getPropertiesByBounds(bounds, {
           page: 1,
           limit: 20, // Load more properties for map view
           lastKey: null // For now, load all in bounds
         });
+
       } else {
         // Load all properties (initial load)
         response = await apiService.getProperties({
           page: 1,
           limit: 100
         });
+
       }
       
       if (response.success && response.data) {
@@ -147,7 +150,7 @@ const PropertyMap = () => {
         return;
       }
       
-      if (storeProperties.length === 0) {
+      if (storeProperties.length === 0 ) {
         // Load all properties initially for better user experience
         await loadProperties();
         // Set a flag to indicate initial load is complete

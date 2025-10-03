@@ -58,42 +58,6 @@ const schemas = {
     secret: Joi.string().required()
   }),
 
-  // Lead schemas
-  lead: Joi.object({
-    name: Joi.string().min(2).max(100).required(),
-    phone: Joi.string().optional().allow('').allow(null),
-    email: Joi.string().optional().allow('').allow(null),
-    notes: Joi.string().max(1000).optional().allow('').allow(null),
-    status: Joi.string().valid('New', 'Attempted', 'Connected', 'Progress', 'Potential', 'Customer').default('New'),
-    interest: Joi.string().max(200).optional().allow('').allow(null),
-    property: Joi.string().max(200).optional().allow('').allow(null),
-    propertyId: Joi.string().optional().allow('').allow(null),
-    propertyAddress: Joi.string().max(300).optional().allow('').allow(null),
-    apartment: Joi.string().max(100).optional().allow('').allow(null),
-    apartmentId: Joi.string().optional().allow('').allow(null),
-    apartmentRooms: Joi.number().integer().min(1).max(10).optional().allow(null),
-    apartmentArea: Joi.number().positive().optional().allow(null),
-    apartmentPrice: Joi.number().positive().optional().allow(null),
-    propertiesOfInterest: Joi.array().items(Joi.string()).default([]),
-    // Add history and files fields for lead creation/update
-    history: Joi.array().items(Joi.object({
-      id: Joi.string().optional(),
-      type: Joi.string().required(),
-      date: Joi.string().required(),
-      time: Joi.string().optional(),
-      notes: Joi.string().required(),
-      createdAt: Joi.string().optional()
-    })).default([]),
-    files: Joi.array().items(Joi.object({
-      id: Joi.string().optional(),
-      name: Joi.string().required(),
-      type: Joi.string().required(),
-      size: Joi.string().optional(),
-      url: Joi.string().required(),
-      s3Key: Joi.string().optional(),
-      createdAt: Joi.string().optional()
-    })).default([])
-  }),
 
   // Property schemas
   property: Joi.object({
@@ -103,9 +67,6 @@ const schemas = {
     description: Joi.string().max(2000).optional().allow(''),
     image: Joi.string().optional().allow(''), // Can be URI or base64
     mainImage: Joi.string().uri().optional().allow(''), // Main image/logo URL
-    roomNumber: Joi.string().max(20).optional().allow(''),
-    price: Joi.number().positive().optional().allow(null),
-    rooms: Joi.number().integer().min(1).max(10).optional().allow(null),
     area: Joi.number().positive().optional().allow(null),
     position: Joi.object({
       lat: Joi.number().min(-90).max(90).required(),
@@ -115,6 +76,11 @@ const schemas = {
       lat: Joi.number().min(-90).max(90).required(),
       lng: Joi.number().min(-180).max(180).required()
     }).optional().allow(null),
+    apartmentTypes: Joi.array().items(Joi.object({
+      id: Joi.string().required(),
+      type: Joi.string().valid('studio', '1 cameră', '2 camere', '3 camere', '4 camere', '5+ camere', 'penthouse', 'duplex').required(),
+      price: Joi.number().positive().optional().allow('', null)
+    })).default([]),
     images: Joi.array().items(Joi.string().uri()).default([]),
     documents: Joi.array().items(Joi.object({
       url: Joi.string().uri().required(),

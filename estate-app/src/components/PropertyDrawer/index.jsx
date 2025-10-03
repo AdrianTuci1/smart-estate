@@ -18,7 +18,8 @@ const PropertyDrawer = () => {
     image: '',
     description: '',
     lat: '',
-    lng: ''
+    lng: '',
+    apartmentTypes: []
   });
   const [galleryImages, setGalleryImages] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -39,7 +40,8 @@ const PropertyDrawer = () => {
           image: '',
           description: '',
           lat: '',
-          lng: ''
+          lng: '',
+          apartmentTypes: []
         });
         setGalleryImages([]);
       } else {
@@ -59,7 +61,8 @@ const PropertyDrawer = () => {
           image: selectedProperty.mainImage || '',
           description: selectedProperty.description || '',
           lat: selectedProperty.position?.lat || '',
-          lng: selectedProperty.position?.lng || ''
+          lng: selectedProperty.position?.lng || '',
+          apartmentTypes: selectedProperty.apartmentTypes || []
         });
         // Set gallery images based on actual property images array
         setGalleryImages(selectedProperty.images || []);
@@ -88,6 +91,7 @@ const PropertyDrawer = () => {
           status: formData.status,
           description: formData.description,
           image: formData.image,
+          apartmentTypes: formData.apartmentTypes,
           position: {
             lat: parseFloat(formData.lat),
             lng: parseFloat(formData.lng)
@@ -115,6 +119,7 @@ const PropertyDrawer = () => {
           status: formData.status,
           description: formData.description,
           image: formData.image,
+          apartmentTypes: formData.apartmentTypes,
           position: {
             lat: parseFloat(formData.lat),
             lng: parseFloat(formData.lng)
@@ -154,7 +159,8 @@ const PropertyDrawer = () => {
         image: selectedProperty.image || '',
         description: selectedProperty.description || '',
         lat: selectedProperty.position?.lat || '',
-        lng: selectedProperty.position?.lng || ''
+        lng: selectedProperty.position?.lng || '',
+        apartmentTypes: selectedProperty.apartmentTypes || []
       });
     }
   };
@@ -206,7 +212,7 @@ const PropertyDrawer = () => {
   };
 
   return (
-    <div className="absolute inset-y-0 right-0 z-50 w-full md:w-96 bg-white/95 backdrop-blur-sm shadow-drawer transform transition-all duration-300 ease-in-out translate-x-0">
+    <div className="absolute inset-y-0 right-0 z-50 w-full md:w-96 bg-white backdrop-blur-sm shadow-drawer transform transition-all duration-300 ease-in-out translate-x-0">
       <div className="flex flex-col h-full">
         {/* Header with Close, Edit and Delete buttons */}
         <div className={`flex items-center p-3 md:p-4 border-b border-gray-200 ${

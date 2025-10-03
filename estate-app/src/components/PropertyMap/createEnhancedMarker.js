@@ -20,8 +20,8 @@ const createOverlayElement = (property, borderColor) => {
   
   overlayDiv.innerHTML = `
     <div style="
-      width: 48px;
-      height: 48px;
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
       overflow: hidden;
       border: 3px solid ${borderColor};

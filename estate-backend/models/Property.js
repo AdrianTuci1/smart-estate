@@ -13,6 +13,7 @@ class Property {
     this.mainImage = data.mainImage || null; // Main image/logo URL
     this.description = data.description || '';
     this.coordinates = data.coordinates || null; // { lat: number, lng: number }
+    this.apartmentTypes = data.apartmentTypes || []; // Array of apartment types with prices
     this.files = data.files || []; // Array of file references
     this.createdAt = data.createdAt || new Date().toISOString();
     this.updatedAt = data.updatedAt || new Date().toISOString();

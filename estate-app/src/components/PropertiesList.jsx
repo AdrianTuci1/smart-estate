@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Building2, MapPin, Plus, Eye, FileText, Users, FileImage, ChevronDown } from 'lucide-react';
+import { Building2, MapPin, Plus, Eye, FileText, Users, FileImage, ChevronDown, Euro } from 'lucide-react';
 import apiService from '../services/api';
 import useAppStore from '../stores/useAppStore';
 import { useAuth } from '../contexts/AuthContext';
@@ -206,6 +206,25 @@ const PropertiesList = ({ searchTerm = '' }) => {
     }
   };
 
+  const getPriceRange = (property) => {
+    if (!property.apartmentTypes || property.apartmentTypes.length === 0) {
+      return { min: null, max: null };
+    }
+    
+    const prices = property.apartmentTypes
+      .map(type => parseInt(type.price))
+      .filter(price => !isNaN(price) && price > 0);
+    
+    if (prices.length === 0) {
+      return { min: null, max: null };
+    }
+    
+    return {
+      min: Math.min(...prices),
+      max: Math.max(...prices)
+    };
+  };
+
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Small spacing on mobile */}
@@ -290,68 +309,91 @@ const PropertiesList = ({ searchTerm = '' }) => {
                       {getSortIcon('address')}
                     </div>
                   </th>
-                  {/* Hide actions column on mobile */}
+                  {/* Price columns - hide on mobile */}
                   <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Acțiuni
+                    <div className="flex items-center space-x-1">
+                      <Euro className="h-3 w-3" />
+                      <span>Preț Min</span>
+                    </div>
+                  </th>
+                  <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="flex items-center space-x-1">
+                      <Euro className="h-3 w-3" />
+                      <span>Preț Max</span>
+                    </div>
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAndSortedProperties.map((property) => (
-                  <tr
-                    key={property.id}
-                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                      selectedProperty?.id === property.id ? 'bg-primary-50' : ''
-                    }`}
-                    onClick={() => handlePropertyClick(property)}
-                  >
-                    <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                          <Building2 className="h-4 w-4 md:h-5 md:w-5 text-primary-600" />
-                        </div>
-                        <div className="ml-3 md:ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {property.name}
+                {filteredAndSortedProperties.map((property) => {
+                  const priceRange = getPriceRange(property);
+                  return (
+                    <tr
+                      key={property.id}
+                      className={`hover:bg-gray-50 cursor-pointer transition-colors ${
+                        selectedProperty?.id === property.id ? 'bg-primary-50' : ''
+                      }`}
+                      onClick={() => handlePropertyClick(property)}
+                    >
+                      <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                            <Building2 className="h-4 w-4 md:h-5 md:w-5 text-primary-600" />
                           </div>
-                          {/* Show address on mobile as subtitle */}
-                          <div className="md:hidden text-xs text-gray-500 truncate max-w-32">
-                            {property.address}
+                          <div className="ml-3 md:ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {property.name}
+                            </div>
+                            {/* Show address on mobile as subtitle */}
+                            <div className="md:hidden text-xs text-gray-500 truncate max-w-32">
+                              {property.address}
+                            </div>
+                            {/* Show price range on mobile as subtitle */}
+                            {priceRange.min && priceRange.max && (
+                              <div className="md:hidden text-xs text-primary-600 font-medium">
+                                {priceRange.min === priceRange.max 
+                                  ? `${priceRange.min.toLocaleString('ro-RO')} €`
+                                  : `${priceRange.min.toLocaleString('ro-RO')} - ${priceRange.max.toLocaleString('ro-RO')} €`
+                                }
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-0.5 md:px-2.5 md:py-0.5 rounded-full text-xs font-medium ${getStatusColor(property.status)}`}>
-                        {property.status}
-                      </span>
-                    </td>
-                    {/* Hide address column on mobile */}
-                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-gray-900">
-                        <MapPin className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="truncate max-w-xs">
-                          {property.address}
+                      </td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 md:px-2.5 md:py-0.5 rounded-full text-xs font-medium ${getStatusColor(property.status)}`}>
+                          {property.status}
                         </span>
-                      </div>
-                    </td>
-                    {/* Hide actions column on mobile */}
-                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePropertyClick(property);
-                          }}
-                          className="text-primary-600 hover:text-primary-900 p-1"
-                          title="Vezi detalii"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      {/* Hide address column on mobile */}
+                      <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center text-sm text-gray-900">
+                          <MapPin className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="truncate max-w-xs">
+                            {property.address}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Price columns - hide on mobile */}
+                      <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="flex items-center">
+                          <Euro className="h-3 w-3 text-gray-400 mr-1" />
+                          <span>
+                            {priceRange.min ? priceRange.min.toLocaleString('ro-RO') : '-'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="flex items-center">
+                          <Euro className="h-3 w-3 text-gray-400 mr-1" />
+                          <span>
+                            {priceRange.max ? priceRange.max.toLocaleString('ro-RO') : '-'}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             
